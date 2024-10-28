@@ -1,0 +1,37 @@
+/* src/Components/SignUpPage/SignUpPage.css */
+
+/* Similar styles to LoginPage can be reused here */
+.form-container {
+  max-width: 400px;
+  margin: auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff; /* White background for forms */
+}
+
+.form-container h2 {
+  text-align: center;
+}
+
+.form-container input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc; /* Light gray border */
+  border-radius: 4px;
+}
+
+.form-container button {
+  width: 100%;
+  padding: 10px;
+  background-color: #333; /* Dark button background */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.form-container button:hover {
+  background-color: #555; /* Darker gray on hover */
+}
