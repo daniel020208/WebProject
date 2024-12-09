@@ -54,7 +54,7 @@ function StockCard({ stock, onDelete }) {
         setPriceChange(chartData[chartData.length - 1].close - chartData[0].close);
         setError(null);
 
-        // Fetch additional stock information
+        // 1Fetch additional stock information
         const infoResponse = await fetch(`https://financialmodelingprep.com/api/v3/quote/${stock.symbol}?apikey=${API_KEY}`);
         const infoData = await infoResponse.json();
         if (infoData.length > 0) {
