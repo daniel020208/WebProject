@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
-import { db } from './config/firebase';
+import React, { useState } from 'react';
 import Login from './components/Login/Login';
 import Signup from './components/Signup/Signup';
 import Dashboard from './components/Dashboard/Dashboard';
@@ -13,43 +11,32 @@ import './App.css';
 function App() {
   const [currentPage, setCurrentPage] = useState('login');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [stocks, setStocks] = useState([]);
+  const [stocks, setStocks] = useState([
+    { id: 'default', symbol: 'MSFT', name: 'Microsoft Corporation' }
+  ]);
 
-  useEffect(() => {
-    const fetchStocks = async () => {
-      const stocksCollection = collection(db, 'stocks');
-      const stocksSnapshot = await getDocs(stocksCollection);
-      const stocksList = stocksSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setStocks(stocksList);
-    };
-
-    if (isAuthenticated) {
-      fetchStocks();
-    }
-  }, [isAuthenticated]);
-
-  const handleSkipAuth = () => {
+  function handleSkipAuth() {
     setIsAuthenticated(true);
     setCurrentPage('home');
-  };
+  }
 
-  const handleAddStock = async (newStock) => {
+  function handleAddStock(newStock) {
+    console.log("Adding new stock:", newStock);
     if (!stocks.some(stock => stock.symbol === newStock.symbol)) {
-      const docRef = await addDoc(collection(db, 'stocks'), newStock);
-      setStocks(prevStocks => [...prevStocks, { id: docRef.id, ...newStock }]);
+      const stockWithId = { id: Date.now().toString(), ...newStock };
+      setStocks(prevStocks => [...prevStocks, stockWithId]);
+      console.log("Stock added successfully:", stockWithId);
+      setCurrentPage('home');
+    } else {
+      console.log("Stock already exists");
     }
-    setCurrentPage('home');
-  };
+  }
 
-  const handleDeleteStock = async (stockId) => {
-    await deleteDoc(doc(db, 'stocks', stockId));
-    setStocks(stocks.filter(stock => stock.id !== stockId));
-  };
+  function handleDeleteStock(stockId) {
+    setStocks(prevStocks => prevStocks.filter(stock => stock.id !== stockId));
+  }
 
-  const renderPage = () => {
+  function renderPage() {
     switch (currentPage) {
       case 'home':
         return <Dashboard stocks={stocks} onDeleteStock={handleDeleteStock} />;
@@ -66,7 +53,7 @@ function App() {
       default:
         return <Dashboard stocks={stocks} onDeleteStock={handleDeleteStock} />;
     }
-  };
+  }
 
   return (
     <div className="app-container">

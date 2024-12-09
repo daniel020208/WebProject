@@ -7,88 +7,86 @@ function AddStock({ onAddStock }) {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [error, setError] = useState(null);
-  const [newStockSymbol, setNewStockSymbol] = useState('');
-  const [newStockName, setNewStockName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSearch = async (e) => {
+  async function handleSearch(e) {
     e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSearchResults([]);
+
     try {
       const response = await fetch(`https://financialmodelingprep.com/api/v3/search?query=${query}&limit=10&apikey=${API_KEY}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
+      console.log("API Response:", data); // Log the API response
+
       if (data.length === 0) {
         setError('No results found');
       } else {
         setSearchResults(data);
-        setError(null);
       }
     } catch (err) {
-      setError('Error searching for stocks');
-      console.error(err);
+      console.error("Error details:", err);
+      setError('Error searching for stocks: ' + err.message);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }
 
-  const handleAddStock = (stock) => {
-    onAddStock(stock);
-    setQuery('');
-    setSearchResults([]);
-  };
+  async function handleAddStock(stock) {
+    try {
+      console.log("Adding stock:", stock);
+      const response = await fetch(`https://financialmodelingprep.com/api/v3/profile/${stock.symbol}?apikey=${API_KEY}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Stock data:", data);
 
-  const handleAddNewStock = (e) => {
-    e.preventDefault();
-    if (newStockSymbol && newStockName) {
-      onAddStock({ symbol: newStockSymbol.toUpperCase(), name: newStockName });
-      setNewStockSymbol('');
-      setNewStockName('');
+      if (data.length > 0) {
+        const newStock = { symbol: stock.symbol, name: data[0].companyName };
+        onAddStock(newStock);
+        setQuery('');
+        setSearchResults([]);
+      } else {
+        setError('No data available for this stock');
+      }
+    } catch (err) {
+      console.error("Error adding stock:", err);
+      setError('Error adding stock: ' + err.message);
     }
-  };
+  }
 
   return (
     <div className="add-stock">
       <h2>Add New Stock</h2>
-      <div className="search-section">
-        <h3>Search for a Stock</h3>
-        <form onSubmit={handleSearch}>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for a stock..."
-            required
-          />
-          <button type="submit"className='button1'>Search</button>
-        </form>
-        {error && <p className="error">{error}</p>}
-        {searchResults.length > 0 && (
-          <ul className="search-results">
-            {searchResults.map((stock) => (
-              <li key={stock.symbol}>
-                <span>{stock.name} ({stock.symbol})</span>
-                <button onClick={() => handleAddStock(stock)} className='button1'>Add</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <div className="manual-add-section">
-        <h3>Add Stock Manually</h3>
-        <form onSubmit={handleAddNewStock}>
-          <input
-            type="text"
-            value={newStockSymbol}
-            onChange={(e) => setNewStockSymbol(e.target.value)}
-            placeholder="Stock Symbol (e.g., AAPL)"
-            required
-          />
-          <input
-            type="text"
-            value={newStockName}
-            onChange={(e) => setNewStockName(e.target.value)}
-            placeholder="Stock Name (e.g., Apple Inc.)"
-            required
-          />
-          <button type="submit"className='button1'>Add Stock</button>
-        </form>
-      </div>
+      <form onSubmit={handleSearch}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search for a stock..."
+          required
+          disabled={isLoading}
+        />
+        <button type="submit" className="button1" disabled={isLoading}>
+          {isLoading ? 'Searching...' : 'Search'}
+        </button>
+      </form>
+      {error && <p className="error">{error}</p>}
+      {searchResults.length > 0 && (
+        <ul className="search-results">
+          {searchResults.map((stock) => (
+            <li key={stock.symbol}>
+              <span>{stock.name} ({stock.symbol})</span>
+              <button onClick={() => handleAddStock(stock)} className="button1">Add</button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

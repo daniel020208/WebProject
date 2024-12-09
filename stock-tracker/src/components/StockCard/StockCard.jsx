@@ -1,29 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { InfoIcon as InfoCircle } from 'lucide-react';
 import './StockCard.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 const API_KEY = import.meta.env.VITE_FINANCIAL_MODELING_PREP_API_KEY;
 
-function StockCard({ symbol, name }) {
+function StockCard({ stock, onDelete }) {
   const [stockData, setStockData] = useState(null);
   const [error, setError] = useState(null);
   const [timeframe, setTimeframe] = useState('30');
   const [latestPrice, setLatestPrice] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
+  const [additionalInfo, setAdditionalInfo] = useState(null);
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
-    const fetchStockData = async () => {
+    async function fetchStockData() {
       try {
-        if (!API_KEY) {
-          throw new Error('API key is undefined. Please check your environment variables.');
+        console.log(`Fetching data for ${stock.symbol} with timeframe ${timeframe}`);
+        const response = await fetch(`https://financialmodelingprep.com/api/v3/historical-price-full/${stock.symbol}?timeseries=${timeframe}&apikey=${API_KEY}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const response = await fetch(`https://financialmodelingprep.com/api/v3/historical-price-full/${symbol}?timeseries=${timeframe}&apikey=${API_KEY}`);
         const data = await response.json();
-        
+        console.log('API response:', data);
+
         if (!data.historical || data.historical.length === 0) {
           throw new Error('No data available for this stock');
         }
@@ -36,8 +42,8 @@ function StockCard({ symbol, name }) {
             {
               label: 'Closing Price',
               data: chartData.map(entry => entry.close),
-              borderColor: 'rgb(59, 130, 246)',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderColor: 'rgb(75, 192, 192)',
+              backgroundColor: 'rgba(75, 192, 192, 0.5)',
               tension: 0.1,
               fill: true
             }
@@ -46,14 +52,34 @@ function StockCard({ symbol, name }) {
 
         setLatestPrice(chartData[chartData.length - 1].close);
         setPriceChange(chartData[chartData.length - 1].close - chartData[0].close);
+        setError(null);
+
+        // Fetch additional stock information
+        const infoResponse = await fetch(`https://financialmodelingprep.com/api/v3/quote/${stock.symbol}?apikey=${API_KEY}`);
+        const infoData = await infoResponse.json();
+        if (infoData.length > 0) {
+          setAdditionalInfo(infoData[0]);
+        }
       } catch (err) {
         console.error('Error fetching stock data:', err);
         setError(err.message);
+        setStockData(null);
+        setLatestPrice(null);
+        setPriceChange(null);
+        setAdditionalInfo(null);
       }
-    };
+    }
 
     fetchStockData();
-  }, [symbol, timeframe]);
+  }, [stock.symbol, timeframe]);
+
+  const infoExplanations = {
+    volume: "The total number of shares traded during the most recent trading day.",
+    marketCap: "The total value of a company's outstanding shares of stock.",
+    peRatio: "The ratio of a company's share price to its earnings per share.",
+    currentPrice: "The most recent price at which the stock was traded.",
+    priceChange: "The change in price over the selected time period."
+  };
 
   if (error) {
     return <div className="stock-card error">Error: {error}</div>;
@@ -66,23 +92,54 @@ function StockCard({ symbol, name }) {
   return (
     <div className="stock-card">
       <div className="stock-info">
-        <h3>{name} ({symbol})</h3>
+        <h3>{stock.name} ({stock.symbol})</h3>
         <div className="stock-price">
           <span className="current-price">${latestPrice.toFixed(2)}</span>
           <span className={`price-change ${priceChange >= 0 ? 'positive' : 'negative'}`}>
             {priceChange >= 0 ? '+' : '-'}${Math.abs(priceChange).toFixed(2)} ({((priceChange / (latestPrice - priceChange)) * 100).toFixed(2)}%)
           </span>
+          <button className="info-button" onClick={() => setShowInfo(!showInfo)}>
+            <InfoCircle size={16} />
+          </button>
         </div>
-        <div className="additional-info">
-          <p>Volume: 1,234,567</p>
-          <p>Market Cap: $123.45B</p>
-          <p>P/E Ratio: 20.5</p>
-        </div>
+        {showInfo && (
+          <div className="info-popup">
+            <p><strong>Current Price:</strong> {infoExplanations.currentPrice}</p>
+            <p><strong>Price Change:</strong> {infoExplanations.priceChange}</p>
+          </div>
+        )}
+        {additionalInfo && (
+          <div className="additional-info">
+            <p>
+              Volume: {additionalInfo.volume.toLocaleString()}
+              <button className="info-button" onClick={() => setShowInfo(!showInfo)}>
+                <InfoCircle size={16} />
+              </button>
+            </p>
+            {showInfo && <div className="info-popup">{infoExplanations.volume}</div>}
+            <p>
+              Market Cap: ${(additionalInfo.marketCap / 1e9).toFixed(2)}B
+              <button className="info-button" onClick={() => setShowInfo(!showInfo)}>
+                <InfoCircle size={16} />
+              </button>
+            </p>
+            {showInfo && <div className="info-popup">{infoExplanations.marketCap}</div>}
+            <p>
+              P/E Ratio: {additionalInfo.pe ? additionalInfo.pe.toFixed(2) : 'N/A'}
+              <button className="info-button" onClick={() => setShowInfo(!showInfo)}>
+                <InfoCircle size={16} />
+              </button>
+            </p>
+            {showInfo && <div className="info-popup">{infoExplanations.peRatio}</div>}
+          </div>
+        )}
+        <button onClick={() => onDelete(stock.id)} className="delete-button">Delete</button>
       </div>
       <div className="chart-container">
         <Line 
           data={stockData}
           options={{
+
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
@@ -90,17 +147,17 @@ function StockCard({ symbol, name }) {
                 display: false,
               },
               title: {
-                display: false,
+                display: false,                
               },
             },
             scales: {
               y: {
                 beginAtZero: false,
                 grid: {
-                  color: 'rgba(0, 0, 0, 0.05)',
+                  color: 'rgba(255, 255, 255, 0.1)',
                 },
                 ticks: {
-                  color: '#6B7280',
+                  color: 'var(--text-color-muted)',
                 },
               },
               x: {
@@ -108,7 +165,7 @@ function StockCard({ symbol, name }) {
                   display: false,
                 },
                 ticks: {
-                  color: '#6B7280',
+                  color: 'var(--text-color-muted)',
                 },
               },
             },
