@@ -3,9 +3,10 @@ import Login from './components/Login/Login';
 import Signup from './components/Signup/Signup';
 import Dashboard from './components/Dashboard/Dashboard';
 import AddStock from './components/AddStock/AddStock';
+import CompareStocks from './components/CompareStocks/CompareStocks';
 import AIAssistant from './components/AIAssistant/AIAssistant';
 import Settings from './components/Settings/Settings';
-import Sidebar from './components/Sidebar/Sidebar';
+import Sidebar from './components/SideBar/Sidebar';
 import './App.css';
 
 function App() {
@@ -42,6 +43,8 @@ function App() {
         return <Dashboard stocks={stocks} onDeleteStock={handleDeleteStock} />;
       case 'add-stock':
         return <AddStock onAddStock={handleAddStock} />;
+      case 'compare-stocks':
+        return <CompareStocks stocks={stocks} />;
       case 'ai-assistant':
         return <AIAssistant />;
       case 'settings':

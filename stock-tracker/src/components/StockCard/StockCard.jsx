@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-import { InfoIcon as InfoCircle } from 'lucide-react';
+import { Info } from 'lucide-react';
 import './StockCard.css';
+import PropTypes from 'prop-types';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -15,26 +16,31 @@ function StockCard({ stock, onDelete }) {
   const [latestPrice, setLatestPrice] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
   const [additionalInfo, setAdditionalInfo] = useState(null);
-  const [showInfo, setShowInfo] = useState(false);
+  const [showInfo, setShowInfo] = useState({
+    currentPrice: false,
+    priceChange: false,
+    volume: false,
+    marketCap: false,
+    peRatio: false
+  });
 
   useEffect(() => {
     async function fetchStockData() {
       try {
-        console.log(`Fetching data for ${stock.symbol} with timeframe ${timeframe}`);
         const response = await fetch(`https://financialmodelingprep.com/api/v3/historical-price-full/${stock.symbol}?timeseries=${timeframe}&apikey=${API_KEY}`);
-        
+      
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log('API response:', data);
 
         if (!data.historical || data.historical.length === 0) {
           throw new Error('No data available for this stock');
         }
 
         const chartData = data.historical.reverse();
+        const latestData = chartData[chartData.length - 1];
 
         setStockData({
           labels: chartData.map(entry => entry.date),
@@ -42,24 +48,22 @@ function StockCard({ stock, onDelete }) {
             {
               label: 'Closing Price',
               data: chartData.map(entry => entry.close),
-              borderColor: 'rgb(75, 192, 192)',
-              backgroundColor: 'rgba(75, 192, 192, 0.5)',
+              borderColor: '#10B981',
+              backgroundColor: 'rgba(16, 185, 129, 0.2)',
               tension: 0.1,
               fill: true
             }
           ]
         });
 
-        setLatestPrice(chartData[chartData.length - 1].close);
-        setPriceChange(chartData[chartData.length - 1].close - chartData[0].close);
+        setLatestPrice(latestData.close);
+        setPriceChange(latestData.close - chartData[0].close);
+        setAdditionalInfo({
+          volume: latestData.volume,
+          marketCap: latestData.marketCap || 'N/A',
+          pe: latestData.pe || 'N/A'
+        });
         setError(null);
-
-        // 1Fetch additional stock information
-        const infoResponse = await fetch(`https://financialmodelingprep.com/api/v3/quote/${stock.symbol}?apikey=${API_KEY}`);
-        const infoData = await infoResponse.json();
-        if (infoData.length > 0) {
-          setAdditionalInfo(infoData[0]);
-        }
       } catch (err) {
         console.error('Error fetching stock data:', err);
         setError(err.message);
@@ -74,11 +78,15 @@ function StockCard({ stock, onDelete }) {
   }, [stock.symbol, timeframe]);
 
   const infoExplanations = {
+    currentPrice: "The most recent price at which the stock was traded.",
+    priceChange: "The change in price over the selected time period.",
     volume: "The total number of shares traded during the most recent trading day.",
     marketCap: "The total value of a company's outstanding shares of stock.",
-    peRatio: "The ratio of a company's share price to its earnings per share.",
-    currentPrice: "The most recent price at which the stock was traded.",
-    priceChange: "The change in price over the selected time period."
+    peRatio: "The ratio of a company's share price to its earnings per share."
+  };
+
+  const toggleInfo = (key) => {
+    setShowInfo(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   if (error) {
@@ -95,42 +103,43 @@ function StockCard({ stock, onDelete }) {
         <h3>{stock.name} ({stock.symbol})</h3>
         <div className="stock-price">
           <span className="current-price">${latestPrice.toFixed(2)}</span>
-          <span className={`price-change ${priceChange >= 0 ? 'positive' : 'negative'}`}>
-            {priceChange >= 0 ? '+' : '-'}${Math.abs(priceChange).toFixed(2)} ({((priceChange / (latestPrice - priceChange)) * 100).toFixed(2)}%)
-          </span>
-          <button className="info-button" onClick={() => setShowInfo(!showInfo)}>
-            <InfoCircle size={16} />
+          <button className="info-button" onClick={() => toggleInfo('currentPrice')}>
+            <Info size={16} />
           </button>
         </div>
-        {showInfo && (
-          <div className="info-popup">
-            <p><strong>Current Price:</strong> {infoExplanations.currentPrice}</p>
-            <p><strong>Price Change:</strong> {infoExplanations.priceChange}</p>
-          </div>
-        )}
+        {showInfo.currentPrice && <div className="info-text">{infoExplanations.currentPrice}</div>}
+        <div className="price-change">
+          <span className={priceChange >= 0 ? 'positive' : 'negative'}>
+            {priceChange >= 0 ? '+' : '-'}${Math.abs(priceChange).toFixed(2)} ({((priceChange / (latestPrice - priceChange)) * 100).toFixed(2)}%)
+          </span>
+          <button className="info-button" onClick={() => toggleInfo('priceChange')}>
+            <Info size={16} />
+          </button>
+        </div>
+        {showInfo.priceChange && <div className="info-text">{infoExplanations.priceChange}</div>}
         {additionalInfo && (
           <div className="additional-info">
             <p>
               Volume: {additionalInfo.volume.toLocaleString()}
-              <button className="info-button" onClick={() => setShowInfo(!showInfo)}>
-                <InfoCircle size={16} />
+              <button className="info-button" onClick={() => toggleInfo('volume')}>
+                <Info size={16} />
               </button>
             </p>
-            {showInfo && <div className="info-popup">{infoExplanations.volume}</div>}
+            {showInfo.volume && <div className="info-text">{infoExplanations.volume}</div>}
             <p>
               Market Cap: ${(additionalInfo.marketCap / 1e9).toFixed(2)}B
-              <button className="info-button" onClick={() => setShowInfo(!showInfo)}>
-                <InfoCircle size={16} />
+              <button className="info-button" onClick={() => toggleInfo('marketCap')}>
+                <Info size={16} />
               </button>
             </p>
-            {showInfo && <div className="info-popup">{infoExplanations.marketCap}</div>}
+            {showInfo.marketCap && <div className="info-text">{infoExplanations.marketCap}</div>}
             <p>
               P/E Ratio: {additionalInfo.pe ? additionalInfo.pe.toFixed(2) : 'N/A'}
-              <button className="info-button" onClick={() => setShowInfo(!showInfo)}>
-                <InfoCircle size={16} />
+              <button className="info-button" onClick={() => toggleInfo('peRatio')}>
+                <Info size={16} />
               </button>
             </p>
-            {showInfo && <div className="info-popup">{infoExplanations.peRatio}</div>}
+            {showInfo.peRatio && <div className="info-text">{infoExplanations.peRatio}</div>}
           </div>
         )}
         <button onClick={() => onDelete(stock.id)} className="delete-button">Delete</button>
@@ -139,7 +148,6 @@ function StockCard({ stock, onDelete }) {
         <Line 
           data={stockData}
           options={{
-
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
@@ -147,7 +155,7 @@ function StockCard({ stock, onDelete }) {
                 display: false,
               },
               title: {
-                display: false,                
+                display: false,
               },
             },
             scales: {
@@ -181,6 +189,15 @@ function StockCard({ stock, onDelete }) {
     </div>
   );
 }
+
+StockCard.propTypes = {
+  stock: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    symbol: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+  }).isRequired,
+  onDelete: PropTypes.func.isRequired,
+};
 
 export default StockCard;
 

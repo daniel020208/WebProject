@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './AiAssistant.css'
+import './AIAssistant.css';
 
 function AIAssistant() {
   const [query, setQuery] = useState('');

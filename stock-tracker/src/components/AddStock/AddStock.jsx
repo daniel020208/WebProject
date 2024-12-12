@@ -16,17 +16,34 @@ function AddStock({ onAddStock }) {
     setSearchResults([]);
 
     try {
-      const response = await fetch(`https://financialmodelingprep.com/api/v3/search?query=${query}&limit=10&apikey=${API_KEY}`);
+      const response = await fetch(`https://financialmodelingprep.com/api/v3/search?query=${query}&limit=20&apikey=${API_KEY}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      console.log("API Response:", data); // Log the API response
+      console.log("API Response:", data);
 
       if (data.length === 0) {
         setError('No results found');
       } else {
-        setSearchResults(data);
+        // Filter and sort the results
+        const filteredResults = data
+          .filter(stock => stock.exchangeShortName && ['NASDAQ', 'NYSE'].includes(stock.exchangeShortName))
+          .sort((a, b) => {
+            // Prioritize exact matches
+            if (a.symbol.toLowerCase() === query.toLowerCase()) return -1;
+            if (b.symbol.toLowerCase() === query.toLowerCase()) return 1;
+            
+            // Then prioritize starts with
+            if (a.symbol.toLowerCase().startsWith(query.toLowerCase())) return -1;
+            if (b.symbol.toLowerCase().startsWith(query.toLowerCase())) return 1;
+            
+            // Then sort alphabetically
+            return a.symbol.localeCompare(b.symbol);
+          })
+          .slice(0, 10); // Limit to top 10 results
+
+        setSearchResults(filteredResults);
       }
     } catch (err) {
       console.error("Error details:", err);
@@ -71,8 +88,9 @@ function AddStock({ onAddStock }) {
           placeholder="Search for a stock..."
           required
           disabled={isLoading}
+          className="search-input"
         />
-        <button type="submit" className="button1" disabled={isLoading}>
+        <button type="submit" className="search-button" disabled={isLoading}>
           {isLoading ? 'Searching...' : 'Search'}
         </button>
       </form>
@@ -82,7 +100,7 @@ function AddStock({ onAddStock }) {
           {searchResults.map((stock) => (
             <li key={stock.symbol}>
               <span>{stock.name} ({stock.symbol})</span>
-              <button onClick={() => handleAddStock(stock)} className="button1">Add</button>
+              <button onClick={() => handleAddStock(stock)} className="add-button">Add</button>
             </li>
           ))}
         </ul>

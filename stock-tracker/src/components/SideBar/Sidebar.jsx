@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaHome, FaRobot, FaPlusSquare, FaCog, FaSignInAlt, FaSignOutAlt, FaUser } from 'react-icons/fa';
+import { Home, PlusSquare, BarChart2, BotIcon as Robot, Settings, LogIn, LogOut, User } from 'lucide-react';
 import './Sidebar.css';
 
 function Sidebar({ setCurrentPage, setIsAuthenticated, isAuthenticated }) {
@@ -24,7 +24,7 @@ function Sidebar({ setCurrentPage, setIsAuthenticated, isAuthenticated }) {
         {!isAuthenticated && (
           <li className="nav-item signin-btn">
             <button onClick={handleSignIn}>
-              <FaSignInAlt className="icon" />
+              <LogIn className="icon" />
               <span>Sign In</span>
             </button>
           </li>
@@ -33,38 +33,44 @@ function Sidebar({ setCurrentPage, setIsAuthenticated, isAuthenticated }) {
           <>
             <li className="nav-item">
               <button onClick={() => setCurrentPage('home')}>
-                <FaHome className="icon" />
+                <Home className="icon" />
                 <span>Dashboard</span>
               </button>
             </li>
             <li className="nav-item">
               <button onClick={() => setCurrentPage('add-stock')}>
-                <FaPlusSquare className="icon" />
+                <PlusSquare className="icon" />
                 <span>Add Stocks</span>
               </button>
             </li>
             <li className="nav-item">
+              <button onClick={() => setCurrentPage('compare-stocks')}>
+                <BarChart2 className="icon" />
+                <span>Compare Stocks</span>
+              </button>
+            </li>
+            <li className="nav-item">
               <button onClick={() => setCurrentPage('ai-assistant')}>
-                <FaRobot className="icon" />
+                <Robot className="icon" />
                 <span>Stocks Helper</span>
               </button>
             </li>
             <li className="nav-item profile-item">
               <button onClick={() => setIsProfileOpen(!isProfileOpen)}>
-                <FaUser className="icon" />
+                <User className="icon" />
                 <span>Profile</span>
               </button>
               {isProfileOpen && (
                 <ul className="profile-dropdown">
                   <li>
                     <button onClick={() => setCurrentPage('settings')}>
-                      <FaCog className="icon" />
+                      <Settings className="icon" />
                       <span>Settings</span>
                     </button>
                   </li>
                   <li>
                     <button onClick={handleSignOut}>
-                      <FaSignOutAlt className="icon" />
+                      <LogOut className="icon" />
                       <span>Sign Out</span>
                     </button>
                   </li>

@@ -4,7 +4,7 @@
   left: 0;
   height: 100vh;
   width: 60px;
-  background-color: #1a1a1a;
+  background-color: var(--secondary-color);
   transition: width 0.3s ease;
   overflow: hidden;
   z-index: 1000;
@@ -34,13 +34,13 @@
   align-items: center;
   border: none;
   background: none;
-  color: #ffffff;
+  color: var(--text-color);
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
 .nav-item button:hover {
-  background-color: #2d2d2d;
+  background-color: var(--primary-color);
 }
 
 .icon {
@@ -62,12 +62,12 @@
 
 .signin-btn button,
 .signout-btn button {
-  background-color: #3a3a3a;
+  background-color: var(--accent-color);
 }
 
 .signin-btn button:hover,
 .signout-btn button:hover {
-  background-color: #4a4a4a;
+  background-color: #0E9F6E;
 }
 
 .profile-item {
@@ -79,7 +79,7 @@
   top: 100%;
   left: 0;
   width: 100%;
-  background-color: #2d2d2d;
+  background-color: var(--primary-color);
   border-radius: 0 0 4px 4px;
   overflow: hidden;
   z-index: 1000;
@@ -99,3 +99,4 @@
   left: 100%;
   top: 0;
 }
+

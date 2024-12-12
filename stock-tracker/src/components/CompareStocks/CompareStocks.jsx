@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import './CompareStocks.css';
+import PropTypes from 'prop-types';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -14,6 +15,7 @@ function CompareStocks({ stocks }) {
   const [selectedStocks, setSelectedStocks] = useState([]);
   const [comparisonMetric, setComparisonMetric] = useState('price');
   const [stockStats, setStockStats] = useState({});
+  const [showHowToUse, setShowHowToUse] = useState(false); // Added state for toggling "How to use" section
 
   useEffect(() => {
     async function fetchCompareData() {
@@ -33,7 +35,10 @@ function CompareStocks({ stocks }) {
         const [results, quoteResults] = await Promise.all([Promise.all(promises), Promise.all(quotePromises)]);
 
         const chartData = {
-          labels: results[0].historical.map(entry => entry.date).reverse(),
+          labels: results[0].historical.map(entry => {
+            const date = new Date(entry.date);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          }).reverse(),
           datasets: results.map((result, index) => {
             const data = result.historical.map(entry => {
               switch (comparisonMetric) {
@@ -106,126 +111,164 @@ function CompareStocks({ stocks }) {
     return <div className="compare-stocks error">Error: {error}</div>;
   }
 
-  return (
-    <div className="compare-stocks">
-      <h2>Compare Stocks</h2>
-      <div className="stock-selector">
-        {stocks.map(stock => (
-          <button
-            key={stock.symbol}
-            onClick={() => handleStockSelect(stock.symbol)}
-            className={selectedStocks.includes(stock.symbol) ? 'selected' : ''}
-          >
-            {stock.symbol}
+  try {
+    return (
+      <div className="compare-stocks">
+        <h2>Compare Stocks</h2>
+        <div className="compare-info">
+          <button onClick={() => setShowHowToUse(!showHowToUse)} className="how-to-use-toggle">
+            {showHowToUse ? 'Hide' : 'Show'} How to Use
           </button>
-        ))}
-      </div>
-      <div className="comparison-options">
-        <h3>Comparison Options:</h3>
-        <div className="option-buttons">
-          <button
-            onClick={() => handleComparisonMetricChange('price')}
-            className={comparisonMetric === 'price' ? 'active' : ''}
-          >
-            Price
-          </button>
-          <button
-            onClick={() => handleComparisonMetricChange('percentChange')}
-            className={comparisonMetric === 'percentChange' ? 'active' : ''}
-          >
-            Percent Change
-          </button>
-          <button
-            onClick={() => handleComparisonMetricChange('volume')}
-            className={comparisonMetric === 'volume' ? 'active' : ''}
-          >
-            Volume
-          </button>
+          {showHowToUse && (
+            <div className="how-to-use-content">
+              <h3>How to use:</h3>
+              <ul>
+                <li>Select up to 3 stocks from the list below to compare.</li>
+                <li>Choose a comparison metric: Price, Percent Change, or Volume.</li>
+                <li>Select a timeframe to view the data.</li>
+                <li>The chart and statistics table will update automatically.</li>
+              </ul>
+            </div>
+          )}
         </div>
-      </div>
-      {compareData && (
-        <>
-          <div className="chart-container">
-            <Line
-              data={compareData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: 'top',
-                  },
-                  title: {
-                    display: true,
-                    text: `Stock ${comparisonMetric === 'percentChange' ? 'Percent Change' : comparisonMetric.charAt(0).toUpperCase() + comparisonMetric.slice(1)} Comparison`,
-                  },
-                },
-                scales: {
-                  y: {
-                    beginAtZero: comparisonMetric === 'percentChange',
-                    grid: {
-                      color: 'rgba(255, 255, 255, 0.1)',
-                    },
-                    ticks: {
-                      color: '#A0AEC0',
-                    },
-                  },
-                  x: {
-                    grid: {
-                      display: false,
-                    },
-                    ticks: {
-                      color: '#A0AEC0',
-                    },
-                  },
-                },
-              }}
-            />
+        <div className="stock-selector">
+          {stocks.map(stock => (
+            <button
+              key={stock.symbol}
+              onClick={() => handleStockSelect(stock.symbol)}
+              className={selectedStocks.includes(stock.symbol) ? 'selected' : ''}
+            >
+              {stock.symbol}
+            </button>
+          ))}
+        </div>
+        <div className="comparison-options">
+          <h3>Comparison Options:</h3>
+          <div className="option-buttons">
+            <button
+              onClick={() => handleComparisonMetricChange('price')}
+              className={comparisonMetric === 'price' ? 'active' : ''}
+            >
+              Price
+            </button>
+            <button
+              onClick={() => handleComparisonMetricChange('percentChange')}
+              className={comparisonMetric === 'percentChange' ? 'active' : ''}
+            >
+              Percent Change
+            </button>
+            <button
+              onClick={() => handleComparisonMetricChange('volume')}
+              className={comparisonMetric === 'volume' ? 'active' : ''}
+            >
+              Volume
+            </button>
           </div>
-          <div className="timeframe-selector">
-            <button onClick={() => setTimeframe('7')} className={timeframe === '7' ? 'active' : ''}>1W</button>
-            <button onClick={() => setTimeframe('30')} className={timeframe === '30' ? 'active' : ''}>1M</button>
-            <button onClick={() => setTimeframe('90')} className={timeframe === '90' ? 'active' : ''}>3M</button>
-            <button onClick={() => setTimeframe('365')} className={timeframe === '365' ? 'active' : ''}>1Y</button>
-          </div>
-          <div className="stock-stats">
-            <h3>Stock Statistics</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Symbol</th>
-                  <th>Price</th>
-                  <th>Change</th>
-                  <th>% Change</th>
-                  <th>Volume</th>
-                  <th>Market Cap</th>
-                  <th>P/E Ratio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(stockStats).map(([symbol, stats]) => (
-                  <tr key={symbol}>
-                    <td>{symbol}</td>
-                    <td>${stats.price.toFixed(2)}</td>
-                    <td className={stats.change >= 0 ? 'positive' : 'negative'}>
-                      ${Math.abs(stats.change).toFixed(2)}
-                    </td>
-                    <td className={stats.percentChange >= 0 ? 'positive' : 'negative'}>
-                      {stats.percentChange.toFixed(2)}%
-                    </td>
-                    <td>{stats.volume.toLocaleString()}</td>
-                    <td>${(stats.marketCap / 1e9).toFixed(2)}B</td>
-                    <td>{stats.pe ? stats.pe.toFixed(2) : 'N/A'}</td>
+        </div>
+        {compareData && (
+          <>
+            <div className="chart-container">
+              <Line
+                data={compareData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'top',
+                      labels: {
+                        color: 'var(--text-color)'
+                      }
+                    },
+                    title: {
+                      display: true,
+                      text: `Stock ${comparisonMetric === 'percentChange' ? 'Percent Change' : comparisonMetric.charAt(0).toUpperCase() + comparisonMetric.slice(1)} Comparison`,
+                      color: 'var(--text-color)'
+                    },
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: comparisonMetric === 'percentChange',
+                      grid: {
+                        color: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      ticks: {
+                        color: 'var(--text-color-muted)',
+                      },
+                    },
+                    x: {
+                      grid: {
+                        display: false,
+                      },
+                      ticks: {
+                        color: 'var(--text-color-muted)',
+                      },
+                    },
+                  },
+                }}
+              />
+            </div>
+            <div className="timeframe-selector">
+              <h3>Timeframe:</h3>
+              <div className="timeframe-buttons">
+                <button onClick={() => setTimeframe('7')} className={timeframe === '7' ? 'active' : ''}>1W</button>
+                <button onClick={() => setTimeframe('30')} className={timeframe === '30' ? 'active' : ''}>1M</button>
+                <button onClick={() => setTimeframe('90')} className={timeframe === '90' ? 'active' : ''}>3M</button>
+                <button onClick={() => setTimeframe('365')} className={timeframe === '365' ? 'active' : ''}>1Y</button>
+              </div>
+            </div>
+            <div className="stock-stats">
+              <h3>Stock Statistics</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th>Price</th>
+                    <th>Change</th>
+                    <th>% Change</th>
+                    <th>Volume</th>
+                    <th>Market Cap</th>
+                    <th>P/E Ratio</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </div>
-  );
+                </thead>
+                <tbody>
+                  {Object.entries(stockStats).map(([symbol, stats]) => (
+                    <tr key={symbol}>
+                      <td>{symbol}</td>
+                      <td>${stats.price.toFixed(2)}</td>
+                      <td className={stats.change >= 0 ? 'positive' : 'negative'}>
+                        ${Math.abs(stats.change).toFixed(2)}
+                      </td>
+                      <td className={stats.percentChange >= 0 ? 'positive' : 'negative'}>
+                        {stats.percentChange.toFixed(2)}%
+                      </td>
+                      <td>{stats.volume.toLocaleString()}</td>
+                      <td>${(stats.marketCap / 1e9).toFixed(2)}B</td>
+                      <td>{stats.pe ? stats.pe.toFixed(2) : 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  } catch (error) {
+    console.error('Error rendering CompareStocks:', error);
+    return <div className="compare-stocks error">An error occurred while rendering the component. Please check the console for more details.</div>;
+  }
 }
+
+CompareStocks.propTypes = {
+  stocks: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      symbol: PropTypes.string.isRequired,
+      name: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+};
 
 export default CompareStocks;
 

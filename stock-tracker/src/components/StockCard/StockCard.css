@@ -7,6 +7,7 @@
   display: flex;
   flex-wrap: wrap;
   width: 100%;
+  color: var(--text-color);
 }
 
 .stock-info {
@@ -17,35 +18,35 @@
 
 .stock-card h3 {
   margin: 0 0 16px 0;
-  color: var(--text-color);
   font-size: 1.4em;
   font-weight: 600;
 }
 
 .stock-price {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
 }
 
-.current-price {
+.current-price.current-price {
   font-size: 1.8em;
   font-weight: bold;
   margin-right: 8px;
-  color: var(--text-color);
 }
 
 .price-change {
   font-size: 1em;
   font-weight: 500;
-  margin-right: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
 }
 
-.price-change.positive {
+.price-change .positive {
   color: var(--success-color);
 }
 
-.price-change.negative {
+.price-change .negative {
   color: var(--error-color);
 }
 
@@ -71,7 +72,7 @@
 }
 
 .timeframe-selector button {
-  background-color: var(--accent-color);
+  background-color: var(--primary-color);
   border: none;
   padding: 8px 16px;
   margin: 0 4px;
@@ -83,12 +84,12 @@
 }
 
 .timeframe-selector button:hover {
-  background-color: var(--primary-color);
+  background-color: var(--accent-color);
 }
 
 .timeframe-selector button.active {
-  background-color: var(--text-color);
-  color: var(--background-color);
+  background-color: var(--accent-color);
+  color: var(--text-color);
 }
 
 .stock-card.error {
@@ -119,7 +120,7 @@
 }
 
 .delete-button:hover {
-  background-color: #d32f2f;
+  background-color: #DC2626;
 }
 
 .info-button {
@@ -135,7 +136,7 @@
   color: var(--text-color);
 }
 
-.info-popup {
+.info-text {
   background-color: var(--primary-color);
   border-radius: 4px;
   padding: 8px;
