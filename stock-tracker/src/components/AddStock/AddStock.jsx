@@ -9,72 +9,68 @@ function AddStock({ onAddStock }) {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function handleSearch(e) {
+  function handleSearch(e) {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     setSearchResults([]);
 
-    try {
-      const response = await fetch(`https://financialmodelingprep.com/api/v3/search?query=${query}&limit=20&apikey=${API_KEY}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log("API Response:", data);
+    fetch(`https://financialmodelingprep.com/api/v3/search?query=${query}&limit=20&apikey=${API_KEY}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.length === 0) {
+          setError('No results found');
+        } else {
+          const filteredResults = data
+            .filter(stock => stock.exchangeShortName && ['NASDAQ', 'NYSE'].includes(stock.exchangeShortName))
+            .sort((a, b) => {
+              if (a.symbol.toLowerCase() === query.toLowerCase()) return -1;
+              if (b.symbol.toLowerCase() === query.toLowerCase()) return 1;
+              if (a.symbol.toLowerCase().startsWith(query.toLowerCase())) return -1;
+              if (b.symbol.toLowerCase().startsWith(query.toLowerCase())) return 1;
+              return a.symbol.localeCompare(b.symbol);
+            })
+            .slice(0, 10);
 
-      if (data.length === 0) {
-        setError('No results found');
-      } else {
-        // Filter and sort the results
-        const filteredResults = data
-          .filter(stock => stock.exchangeShortName && ['NASDAQ', 'NYSE'].includes(stock.exchangeShortName))
-          .sort((a, b) => {
-            // Prioritize exact matches
-            if (a.symbol.toLowerCase() === query.toLowerCase()) return -1;
-            if (b.symbol.toLowerCase() === query.toLowerCase()) return 1;
-            
-            // Then prioritize starts with
-            if (a.symbol.toLowerCase().startsWith(query.toLowerCase())) return -1;
-            if (b.symbol.toLowerCase().startsWith(query.toLowerCase())) return 1;
-            
-            // Then sort alphabetically
-            return a.symbol.localeCompare(b.symbol);
-          })
-          .slice(0, 10); // Limit to top 10 results
-
-        setSearchResults(filteredResults);
-      }
-    } catch (err) {
-      console.error("Error details:", err);
-      setError('Error searching for stocks: ' + err.message);
-    } finally {
-      setIsLoading(false);
-    }
+          setSearchResults(filteredResults);
+        }
+      })
+      .catch(err => {
+        console.error("Error details:", err);
+        setError('Error searching for stocks: ' + err.message);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }
 
-  async function handleAddStock(stock) {
-    try {
-      console.log("Adding stock:", stock);
-      const response = await fetch(`https://financialmodelingprep.com/api/v3/profile/${stock.symbol}?apikey=${API_KEY}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log("Stock data:", data);
-
-      if (data.length > 0) {
-        const newStock = { symbol: stock.symbol, name: data[0].companyName };
-        onAddStock(newStock);
-        setQuery('');
-        setSearchResults([]);
-      } else {
-        setError('No data available for this stock');
-      }
-    } catch (err) {
-      console.error("Error adding stock:", err);
-      setError('Error adding stock: ' + err.message);
-    }
+  function handleAddStock(stock) {
+    fetch(`https://financialmodelingprep.com/api/v3/profile/${stock.symbol}?apikey=${API_KEY}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.length > 0) {
+          const newStock = { symbol: stock.symbol, name: data[0].companyName };
+          onAddStock(newStock);
+          setQuery('');
+          setSearchResults([]);
+        } else {
+          setError('No data available for this stock');
+        }
+      })
+      .catch(err => {
+        console.error("Error adding stock:", err);
+        setError('Error adding stock: ' + err.message);
+      });
   }
 
   return (

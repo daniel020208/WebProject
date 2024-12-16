@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { Home, PlusSquare, BarChart2, BotIcon as Robot, Settings, LogIn, LogOut, User } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../config/firebase';
 import './Sidebar.css';
 
-function Sidebar({ setCurrentPage, setIsAuthenticated, isAuthenticated }) {
+function Sidebar({ setCurrentPage, isAuthenticated, user }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const handleSignIn = () => {
-    setIsAuthenticated(true);
-    setCurrentPage('home');
-  };
-
-  const handleSignOut = () => {
-    setIsAuthenticated(false);
-    setCurrentPage('login');
-  };
+  function handleSignOut() {
+    signOut(auth).then(() => {
+      setCurrentPage('login');
+    }).catch((error) => {
+      console.error('Error signing out:', error);
+    });
+  }
 
   return (
     <nav className={`sidebar ${isOpen ? 'open' : ''}`}
@@ -23,7 +23,7 @@ function Sidebar({ setCurrentPage, setIsAuthenticated, isAuthenticated }) {
       <ul className="nav-list">
         {!isAuthenticated && (
           <li className="nav-item signin-btn">
-            <button onClick={handleSignIn}>
+            <button onClick={() => setCurrentPage('login')}>
               <LogIn className="icon" />
               <span>Sign In</span>
             </button>
@@ -31,6 +31,10 @@ function Sidebar({ setCurrentPage, setIsAuthenticated, isAuthenticated }) {
         )}
         {isAuthenticated && (
           <>
+            <li className="nav-item user-info">
+              <User className="icon" />
+              <span>{user?.displayName || 'User'}</span>
+            </li>
             <li className="nav-item">
               <button onClick={() => setCurrentPage('home')}>
                 <Home className="icon" />

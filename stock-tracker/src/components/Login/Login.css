@@ -22,6 +22,31 @@
   color: var(--text-color);
 }
 
+.password-input {
+
+}
+
+.password-input input {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  background-color: var(--primary-color);
+  color: var(--text-color);
+
+  
+  padding-right: 2.5rem; 
+}
+
+.show-password-button {
+
+}
+
+.show-password-button:hover {
+  color: var(--text-color);
+}
+
 .auth-form button {
   width: 100%;
   padding: 0.5rem;
@@ -30,7 +55,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+
 }
 
 .auth-form button:hover {
@@ -41,4 +66,3 @@
   color: var(--error-color);
   margin-top: 1rem;
 }
-

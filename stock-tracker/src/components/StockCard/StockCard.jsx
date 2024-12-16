@@ -3,7 +3,6 @@ import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { Info } from 'lucide-react';
 import './StockCard.css';
-import PropTypes from 'prop-types';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -59,9 +58,9 @@ function StockCard({ stock, onDelete }) {
         setLatestPrice(latestData.close);
         setPriceChange(latestData.close - chartData[0].close);
         setAdditionalInfo({
-          volume: latestData.volume,
-          marketCap: latestData.marketCap || 'N/A',
-          pe: latestData.pe || 'N/A'
+          volume: latestData.volume || 'N/A',
+          marketCap: latestData.marketCap && !isNaN(latestData.marketCap) ? latestData.marketCap : 'N/A',
+          pe: latestData.pe && !isNaN(latestData.pe) ? latestData.pe : 'N/A'
         });
         setError(null);
       } catch (err) {
@@ -127,14 +126,16 @@ function StockCard({ stock, onDelete }) {
             </p>
             {showInfo.volume && <div className="info-text">{infoExplanations.volume}</div>}
             <p>
-              Market Cap: ${(additionalInfo.marketCap / 1e9).toFixed(2)}B
+              Market Cap: {typeof additionalInfo.marketCap === 'number' 
+                ? `$${(additionalInfo.marketCap / 1e9).toFixed(2)}B` 
+                : 'N/A'}
               <button className="info-button" onClick={() => toggleInfo('marketCap')}>
                 <Info size={16} />
               </button>
             </p>
             {showInfo.marketCap && <div className="info-text">{infoExplanations.marketCap}</div>}
             <p>
-              P/E Ratio: {additionalInfo.pe ? additionalInfo.pe.toFixed(2) : 'N/A'}
+              P/E Ratio: {typeof additionalInfo.pe === 'number' ? additionalInfo.pe.toFixed(2) : 'N/A'}
               <button className="info-button" onClick={() => toggleInfo('peRatio')}>
                 <Info size={16} />
               </button>
@@ -189,15 +190,6 @@ function StockCard({ stock, onDelete }) {
     </div>
   );
 }
-
-StockCard.propTypes = {
-  stock: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    symbol: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-  }).isRequired,
-  onDelete: PropTypes.func.isRequired,
-};
 
 export default StockCard;
 

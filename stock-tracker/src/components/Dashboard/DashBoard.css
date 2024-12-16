@@ -19,3 +19,15 @@
   gap: 24px;
 }
 
+.stock-list > div {
+  transition: background-color 0.2s ease;
+}
+
+.stock-list > div:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.stock-list > div:active {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+

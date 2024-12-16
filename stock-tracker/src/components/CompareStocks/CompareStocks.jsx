@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import './CompareStocks.css';
-import PropTypes from 'prop-types';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -259,16 +258,6 @@ function CompareStocks({ stocks }) {
     return <div className="compare-stocks error">An error occurred while rendering the component. Please check the console for more details.</div>;
   }
 }
-
-CompareStocks.propTypes = {
-  stocks: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      symbol: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-    })
-  ).isRequired,
-};
 
 export default CompareStocks;
 
