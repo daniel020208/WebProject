@@ -17,15 +17,20 @@
   margin-bottom: 1rem;
 }
 
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+}
+
 .auth-form input {
   width: 100%;
   padding: 0.75rem;
-  margin-bottom: 0.5rem;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   background-color: var(--primary-color);
   color: var(--text-color);
-  transition: border-color 0.3s ease;
+  font-size: 1rem;
 }
 
 .auth-form input:focus {
@@ -37,7 +42,33 @@
   border-color: var(--error-color);
 }
 
-.auth-form button {
+.password-input {
+  position: relative;
+}
+
+.password-input input {
+  padding-right: 4.5rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-color-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.password-toggle:hover {
+  color: var(--text-color);
+}
+
+.submit-button,
+.skip-auth-button {
   width: 100%;
   padding: 0.75rem;
   background-color: var(--accent-color);
@@ -45,23 +76,24 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.3s ease, opacity 0.3s ease;
-  font-weight: 500;
+  font-size: 1rem;
+  transition: background-color 0.3s ease;
+  margin-top: 1rem;
 }
 
-.auth-form button:disabled {
+.submit-button:hover:not(:disabled),
+.skip-auth-button:hover {
+  background-color: var(--accent-color-hover);
+}
+
+.submit-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
-.auth-form button:not(:disabled):hover {
-  background-color: #3a7bc8;
-}
-
-.auth-form .error {
+.error {
   color: var(--error-color);
   margin-top: 1rem;
-  font-size: 0.9rem;
   text-align: center;
 }
 
@@ -75,34 +107,24 @@
   background: none;
   border: none;
   color: var(--accent-color);
+  cursor: pointer;
+  font-size: 1rem;
   padding: 0;
   margin-left: 0.5rem;
-  font-weight: 500;
-  width: auto;
 }
 
 .auth-switch button:hover {
   text-decoration: underline;
-  background: none;
 }
 
-.password-input {
-  position: relative;
+.skip-auth-button {
+  background-color: var(--secondary-color);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
 }
 
-.show-password-button {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-color-muted);
-  font-size: 0.8em;
-}
-
-.show-password-button:hover {
+.skip-auth-button:hover {
+  background-color: var(--accent-color);
   color: var(--text-color);
 }
 

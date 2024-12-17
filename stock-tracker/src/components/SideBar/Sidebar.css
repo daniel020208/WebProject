@@ -67,7 +67,7 @@
 
 .signin-btn button:hover,
 .signout-btn button:hover {
-  background-color: #0E9F6E;
+  background-color: var(--accent-color-hover);
 }
 
 .profile-item {
@@ -98,5 +98,17 @@
 .sidebar:not(.open) .profile-dropdown {
   left: 100%;
   top: 0;
+}
+
+.user-info {
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  color: var(--text-color);
+  font-weight: bold;
+}
+
+.user-info .icon {
+  margin-right: 10px;
 }
 

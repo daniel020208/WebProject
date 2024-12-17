@@ -53,6 +53,10 @@ function Login({ setCurrentPage }) {
     }
   };
 
+  const handleSkipAuth = () => {
+    setCurrentPage('home');
+  };
+
   return (
     <div className="auth-form">
       <h2>Login</h2>
@@ -81,17 +85,17 @@ function Login({ setCurrentPage }) {
               required
               className={error && !password ? 'error' : ''}
             />
-            <button
+            {/* <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="show-password-button"
+              className="password-toggle"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? 'Hide' : 'Show'}
-            </button>
+            </button> */}
           </div>
         </div>
-        <button type="submit" disabled={isLoading}>
+        <button type="submit" disabled={isLoading} className="submit-button">
           {isLoading ? 'Logging in...' : 'Login'}
         </button>
       </form>
@@ -99,8 +103,12 @@ function Login({ setCurrentPage }) {
       <p className="auth-switch">
         Don't have an account? <button onClick={() => setCurrentPage('signup')}>Sign up</button>
       </p>
+      <button onClick={handleSkipAuth} className="skip-auth-button">
+        Skip Authentication
+      </button>
     </div>
   );
 }
 
 export default Login;
+

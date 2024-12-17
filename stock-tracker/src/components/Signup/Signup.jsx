@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { setDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
-import { Eye, EyeOff } from 'lucide-react';
 import './Signup.css';
 
 function Signup({ setCurrentPage }) {
@@ -50,10 +49,8 @@ function Signup({ setCurrentPage }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Update the user's displayName in Firebase Authentication
       await updateProfile(user, { displayName: displayName });
 
-      // Store additional user data in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         email,
         displayName,
@@ -61,7 +58,7 @@ function Signup({ setCurrentPage }) {
         createdAt: new Date().toISOString()
       });
 
-      setCurrentPage('home'); // Redirect to home page
+      setCurrentPage('home');
     } catch (error) {
       switch (error.code) {
         case 'auth/email-already-in-use':
@@ -79,6 +76,10 @@ function Signup({ setCurrentPage }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSkipAuth = () => {
+    setCurrentPage('home');
   };
 
   return (
@@ -110,13 +111,13 @@ function Signup({ setCurrentPage }) {
               minLength={6}
               className={error && (!password || password.length < 6) ? 'error' : ''}
             />
-            <button
+            {/* <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="show-password-button"
+              className="password-toggle"
             >
               {showPassword ? 'Hide' : 'Show'}
-            </button>
+            </button> */}
           </div>
         </div>
         <div className="form-group">
@@ -131,13 +132,13 @@ function Signup({ setCurrentPage }) {
               required
               className={error && password !== confirmPassword ? 'error' : ''}
             />
-            <button
+            {/* <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="show-password-button"
+              className="password-toggle"
             >
               {showConfirmPassword ? 'Hide' : 'Show'}
-            </button>
+            </button> */}
           </div>
         </div>
         <div className="form-group">
@@ -162,7 +163,7 @@ function Signup({ setCurrentPage }) {
             onChange={(e) => setPhoneNumber(e.target.value)}
           />
         </div>
-        <button type="submit" disabled={isLoading}>
+        <button type="submit" disabled={isLoading} className="submit-button">
           {isLoading ? 'Signing Up...' : 'Sign Up'}
         </button>
       </form>
@@ -171,6 +172,9 @@ function Signup({ setCurrentPage }) {
         Already have an account?{' '}
         <button onClick={() => setCurrentPage('login')}>Login</button>
       </p>
+      <button onClick={handleSkipAuth} className="skip-auth-button">
+        Skip Authentication
+      </button>
     </div>
   );
 }

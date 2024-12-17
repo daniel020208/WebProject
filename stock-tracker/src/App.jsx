@@ -9,7 +9,8 @@ import AddStock from './components/AddStock/AddStock';
 import CompareStocks from './components/CompareStocks/CompareStocks';
 import AIAssistant from './components/AIAssistant/AIAssistant';
 import Settings from './components/Settings/Settings';
-import Sidebar from './components/Sidebar/Sidebar';
+import Sidebar from './components/SideBar/Sidebar';
+import Profile from './components/Profile/Profile';
 import './App.css';
 
 const defaultStock = { id: 'default', symbol: 'MSFT', name: 'Microsoft Corporation' };
@@ -23,7 +24,7 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        setCurrentPage('home');
+        setCurrentPage('profile');
         try {
           const userStocks = await getUserStocks(user.uid);
           setStocks(userStocks.length > 0 ? userStocks : [defaultStock]);
@@ -80,6 +81,8 @@ function App() {
         return <AIAssistant />;
       case 'settings':
         return <Settings />;
+      case 'profile':
+        return <Profile setCurrentPage={setCurrentPage} />;
       case 'login':
         return <Login setCurrentPage={setCurrentPage} />;
       case 'signup':

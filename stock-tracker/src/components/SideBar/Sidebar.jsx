@@ -1,20 +1,9 @@
 import React, { useState } from 'react';
-import { Home, PlusSquare, BarChart2, BotIcon as Robot, Settings, LogIn, LogOut, User } from 'lucide-react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { Home, PlusSquare, BarChart2, Bot, Settings, LogIn, User } from 'lucide-react';
 import './Sidebar.css';
 
 function Sidebar({ setCurrentPage, isAuthenticated, user }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-  function handleSignOut() {
-    signOut(auth).then(() => {
-      setCurrentPage('login');
-    }).catch((error) => {
-      console.error('Error signing out:', error);
-    });
-  }
 
   return (
     <nav className={`sidebar ${isOpen ? 'open' : ''}`}
@@ -31,9 +20,11 @@ function Sidebar({ setCurrentPage, isAuthenticated, user }) {
         )}
         {isAuthenticated && (
           <>
-            <li className="nav-item user-info">
-              <User className="icon" />
-              <span>{user?.displayName || 'User'}</span>
+            <li className="nav-item">
+              <button onClick={() => setCurrentPage('profile')}>
+                <User className="icon" />
+                <span>{user?.displayName || 'Profile'}</span>
+              </button>
             </li>
             <li className="nav-item">
               <button onClick={() => setCurrentPage('home')}>
@@ -55,31 +46,15 @@ function Sidebar({ setCurrentPage, isAuthenticated, user }) {
             </li>
             <li className="nav-item">
               <button onClick={() => setCurrentPage('ai-assistant')}>
-                <Robot className="icon" />
+                <Bot className="icon" />
                 <span>Stocks Helper</span>
               </button>
             </li>
-            <li className="nav-item profile-item">
-              <button onClick={() => setIsProfileOpen(!isProfileOpen)}>
-                <User className="icon" />
-                <span>Profile</span>
+            <li className="nav-item">
+              <button onClick={() => setCurrentPage('settings')}>
+                <Settings className="icon" />
+                <span>Settings</span>
               </button>
-              {isProfileOpen && (
-                <ul className="profile-dropdown">
-                  <li>
-                    <button onClick={() => setCurrentPage('settings')}>
-                      <Settings className="icon" />
-                      <span>Settings</span>
-                    </button>
-                  </li>
-                  <li>
-                    <button onClick={handleSignOut}>
-                      <LogOut className="icon" />
-                      <span>Sign Out</span>
-                    </button>
-                  </li>
-                </ul>
-              )}
             </li>
           </>
         )}
