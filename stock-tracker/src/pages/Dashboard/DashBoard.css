@@ -1,0 +1,33 @@
+.dashboard {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard h1 {
+  margin-bottom: 1rem;
+  color: var(--text-color);
+  font-size: 2em;
+  font-weight: 600;
+}
+
+.add-stock-button {
+  margin-bottom: 2rem;
+}
+
+.stock-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 1rem;
+  }
+
+  .stock-list {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,23 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Home, PlusSquare, BarChart2, Bot, Settings, LogIn, LogOut, User } from 'lucide-react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { Home, PlusSquare, BarChart2, Bot, Settings, LogIn, User } from 'lucide-react';
 import './Sidebar.css';
 
-function Sidebar({ isAuthenticated, user }) {
-  const navigate = useNavigate();
+function Sidebar({ setCurrentPage, isAuthenticated, user }) {
   const [isOpen, setIsOpen] = useState(false);
-
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-      navigate('/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
 
   return (
     <nav className={`sidebar ${isOpen ? 'open' : ''}`}
@@ -26,54 +12,48 @@ function Sidebar({ isAuthenticated, user }) {
       <ul className="nav-list">
         {!isAuthenticated && (
           <li className="nav-item signin-btn">
-            <Link to="/login">
+            <button onClick={() => setCurrentPage('login')}>
               <LogIn className="icon" />
               <span>Sign In</span>
-            </Link>
+            </button>
           </li>
         )}
         {isAuthenticated && (
           <>
             <li className="nav-item">
-              <Link to="/profile">
+              <button onClick={() => setCurrentPage('profile')}>
                 <User className="icon" />
-                <span>Profile</span>
-              </Link>
+                <span>{user?.displayName || 'Profile'}</span>
+              </button>
             </li>
             <li className="nav-item">
-              <Link to="/dashboard">
+              <button onClick={() => setCurrentPage('home')}>
                 <Home className="icon" />
                 <span>Dashboard</span>
-              </Link>
+              </button>
             </li>
             <li className="nav-item">
-              <Link to="/add-stock">
+              <button onClick={() => setCurrentPage('add-stock')}>
                 <PlusSquare className="icon" />
-                <span>Add Stock</span>
-              </Link>
+                <span>Add Stocks</span>
+              </button>
             </li>
             <li className="nav-item">
-              <Link to="/compare-stocks">
+              <button onClick={() => setCurrentPage('compare-stocks')}>
                 <BarChart2 className="icon" />
                 <span>Compare Stocks</span>
-              </Link>
+              </button>
             </li>
             <li className="nav-item">
-              <Link to="/ai-assistant">
+              <button onClick={() => setCurrentPage('ai-assistant')}>
                 <Bot className="icon" />
-                <span>AI Assistant</span>
-              </Link>
+                <span>Stocks Helper</span>
+              </button>
             </li>
             <li className="nav-item">
-              <Link to="/settings">
+              <button onClick={() => setCurrentPage('settings')}>
                 <Settings className="icon" />
                 <span>Settings</span>
-              </Link>
-            </li>
-            <li className="nav-item">
-              <button onClick={handleSignOut}>
-                <LogOut className="icon" />
-                <span>Sign Out</span>
               </button>
             </li>
           </>

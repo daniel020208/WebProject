@@ -1,0 +1,14 @@
+.profile-picture-upload {
+    margin-bottom: 1rem;
+  }
+  
+  .profile-picture-upload input[type="file"] {
+    margin-bottom: 0.5rem;
+  }
+  
+  .profile-picture-upload .error {
+    color: var(--error-color);
+    margin-top: 0.5rem;
+  }
+  
+  
