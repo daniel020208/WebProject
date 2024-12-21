@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from '../../config/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import FormInput from '../../components/FormInput/FormInput';
@@ -21,16 +21,29 @@ function Profile() {
       try {
         const user = auth.currentUser;
         if (user) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserData({ ...data, photoURL: user.photoURL });
             setEditedData({ ...data, photoURL: user.photoURL });
           } else {
-            setError('User data not found');
+            // Create a new user document if it doesn't exist
+            const newUserData = {
+              email: user.email,
+              displayName: user.displayName || '',
+              phoneNumber: user.phoneNumber || '',
+              createdAt: new Date().toISOString(),
+              stocks: []
+            };
+            await setDoc(userDocRef, newUserData);
+            setUserData({ ...newUserData, photoURL: user.photoURL });
+            setEditedData({ ...newUserData, photoURL: user.photoURL });
           }
         } else {
           setError('No authenticated user');
+          navigate('/login');
         }
       } catch (err) {
         setError('Error fetching user data');
@@ -41,7 +54,7 @@ function Profile() {
     };
 
     fetchUserData();
-  }, []);
+  }, [navigate]);
 
   const handleEdit = () => {
     setEditMode(true);

@@ -65,12 +65,6 @@ function Sidebar({ isAuthenticated, user }) {
               </Link>
             </li>
             <li className="nav-item">
-              <Link to="/settings">
-                <Settings className="icon" />
-                <span>Settings</span>
-              </Link>
-            </li>
-            <li className="nav-item">
               <button onClick={handleSignOut}>
                 <LogOut className="icon" />
                 <span>Sign Out</span>

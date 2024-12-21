@@ -8,10 +8,9 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import AddStock from './pages/AddStock/AddStock';
 import CompareStocks from './pages/CompareStocks/CompareStocks';
 import AIAssistant from './pages/AIAssistant/AIAssistant';
-import Settings from './pages/Settings/Settings';
 import Profile from './pages/Profile/Profile';
-import Login from './pages/Login/Login';
-import Signup from './pages/Signup/Signup';
+import Login from './Pages/Login/Login';
+import Signup from './Pages/Signup/Signup';
 import './App.css';
 
 const defaultStock = { id: 'default', symbol: 'MSFT', name: 'Microsoft Corporation' };
@@ -87,7 +86,7 @@ function App() {
             <Route path="/add-stock" element={user ? <AddStock onAddStock={handleAddStock} /> : <Navigate to="/login" />} />
             <Route path="/compare-stocks" element={user ? <CompareStocks stocks={stocks} /> : <Navigate to="/login" />} />
             <Route path="/ai-assistant" element={user ? <AIAssistant /> : <Navigate to="/login" />} />
-            <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" />} />
+            
             <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
           </Routes>
         </main>
@@ -97,4 +96,3 @@ function App() {
 }
 
 export default App;
-
