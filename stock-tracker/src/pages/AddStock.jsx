@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import './AddStock.css';
-
+import Button from '../components/Button';
 const API_KEY = import.meta.env.VITE_FINANCIAL_MODELING_PREP_API_KEY;
 
 function AddStock({ onAddStock }) {
@@ -74,29 +73,42 @@ function AddStock({ onAddStock }) {
   }
 
   return (
-    <div className="add-stock">
-      <h2>Add New Stock</h2>
-      <form onSubmit={handleSearch}>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search for a stock..."
-          required
-          disabled={isLoading}
-          className="search-input"
-        />
-        <button type="submit" className="search-button" disabled={isLoading}>
-          {isLoading ? 'Searching...' : 'Search'}
-        </button>
+    <div className="p-6 max-w-2xl mx-auto bg-secondary rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4 text-text-primary">Add New Stock</h2>
+      <form onSubmit={handleSearch} className="mb-6">
+        <div className="flex">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search for a stock..."
+            required
+            disabled={isLoading}
+            className="flex-grow p-2 border border-gray-600 rounded-l-md bg-primary text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+          <Button 
+            type="submit" 
+            className="bg-accent hover:bg-accent-dark text-white font-bold py-2 px-4 rounded-r-md"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Searching...' : 'Search'}
+          </Button>
+        </div>
       </form>
-      {error && <p className="error">{error}</p>}
+      {error && <p className="text-error mb-4">{error}</p>}
       {searchResults.length > 0 && (
-        <ul className="search-results">
+        <ul className="bg-primary rounded-md overflow-hidden">
           {searchResults.map((stock) => (
-            <li key={stock.symbol}>
-              <span>{stock.name} ({stock.symbol})</span>
-              <button onClick={() => handleAddStock(stock)} className="add-button">Add</button>
+            <li key={stock.symbol} className="border-b border-gray-700 last:border-b-0">
+              <div className="flex justify-between items-center p-4">
+                <span className="text-text-primary">{stock.name} ({stock.symbol})</span>
+                <Button 
+                  onClick={() => handleAddStock(stock)} 
+                  className="bg-accent hover:bg-accent-dark text-white font-bold py-1 px-3 rounded-md text-sm"
+                >
+                  Add
+                </Button>
+              </div>
             </li>
           ))}
         </ul>

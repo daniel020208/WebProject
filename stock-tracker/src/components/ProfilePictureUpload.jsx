@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
-import { auth, storage } from '../../config/firebase';
-import Button from '../Button/Button';
-import './ProfilePictureUpload.css';
+import { auth, storage } from '../config/firebase';
+import Button from './Button';
 
 function ProfilePictureUpload({ onUploadSuccess }) {
   const [file, setFile] = useState(null);
@@ -46,12 +45,26 @@ function ProfilePictureUpload({ onUploadSuccess }) {
   };
 
   return (
-    <div className="profile-picture-upload">
-      <input type="file" onChange={handleFileChange} accept="image/*" />
-      <Button onClick={handleUpload} disabled={!file || uploading}>
+    <div className="space-y-4">
+      <input 
+        type="file" 
+        onChange={handleFileChange} 
+        accept="image/*" 
+        className="block w-full text-sm text-text-primary
+          file:mr-4 file:py-2 file:px-4
+          file:rounded-full file:border-0
+          file:text-sm file:font-semibold
+          file:bg-accent file:text-white
+          hover:file:bg-accent-dark"
+      />
+      <Button 
+        onClick={handleUpload} 
+        disabled={!file || uploading}
+        className="w-full"
+      >
         {uploading ? 'Uploading...' : 'Upload Profile Picture'}
       </Button>
-      {error && <p className="error">{error}</p>}
+      {error && <p className="text-error">{error}</p>}
     </div>
   );
 }

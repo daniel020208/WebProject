@@ -3,15 +3,14 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase';
 import { getUserStocks, saveUserStocks } from './utils/firestore';
-import Sidebar from './components/Sidebar/Sidebar';
-import Dashboard from './pages/Dashboard/Dashboard';
-import AddStock from './pages/AddStock/AddStock';
-import CompareStocks from './pages/CompareStocks/CompareStocks';
-import AIAssistant from './pages/AIAssistant/AIAssistant';
-import Profile from './pages/Profile/Profile';
-import Login from './Pages/Login/Login';
-import Signup from './Pages/Signup/Signup';
-import './App.css';
+import Sidebar from './components/Sidebar';
+import Dashboard from './pages/Dashboard';
+import AddStock from './pages/AddStock';
+import CompareStocks from './pages/CompareStocks';
+import AIAssistant from './pages/AIAssistant';
+import Profile from './pages/Profile';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
 
 const defaultStock = { id: 'default', symbol: 'MSFT', name: 'Microsoft Corporation' };
 
@@ -64,31 +63,32 @@ function App() {
   function handleReorderStocks(reorderedStocks) {
     setStocks(reorderedStocks);
     if (user) {
-      saveUserStocks(user.uid, reorderedStocks)
+      saveUserStocks(user.id, reorderedStocks)
         .catch(error => console.error('Error saving reordered stocks:', error));
     }
   }
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center h-screen bg-background text-text-primary">Loading...</div>;
   }
 
   return (
     <Router>
-      <div className="app-container">
+      <div className="flex bg-background min-h-screen">
         <Sidebar isAuthenticated={!!user} user={user} />
-        <main className="main-content">
-          <Routes>
-            <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
-            <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/profile" />} />
-            <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
-            <Route path="/dashboard" element={user ? <Dashboard stocks={stocks} onDeleteStock={handleDeleteStock} onReorderStocks={handleReorderStocks} /> : <Navigate to="/login" />} />
-            <Route path="/add-stock" element={user ? <AddStock onAddStock={handleAddStock} /> : <Navigate to="/login" />} />
-            <Route path="/compare-stocks" element={user ? <CompareStocks stocks={stocks} /> : <Navigate to="/login" />} />
-            <Route path="/ai-assistant" element={user ? <AIAssistant /> : <Navigate to="/login" />} />
-            
-            <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
-          </Routes>
+        <main className="flex-grow p-6 ml-20 transition-all duration-300 ease-in-out">
+          <div className="max-w-7xl mx-auto">
+            <Routes>
+              <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
+              <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/profile" />} />
+              <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
+              <Route path="/dashboard" element={user ? <Dashboard stocks={stocks} onDeleteStock={handleDeleteStock} onReorderStocks={handleReorderStocks} /> : <Navigate to="/login" />} />
+              <Route path="/add-stock" element={user ? <AddStock onAddStock={handleAddStock} /> : <Navigate to="/login" />} />
+              <Route path="/compare-stocks" element={user ? <CompareStocks stocks={stocks} /> : <Navigate to="/login" />} />
+              <Route path="/ai-assistant" element={user ? <AIAssistant /> : <Navigate to="/login" />} />
+              <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
+            </Routes>
+          </div>
         </main>
       </div>
     </Router>
@@ -96,3 +96,4 @@ function App() {
 }
 
 export default App;
+

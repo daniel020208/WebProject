@@ -1,10 +1,9 @@
 import React from 'react';
-import './Input.css';
 
 const Input = ({ type = 'text', id, value, onChange, placeholder, required = false, className = '', label }) => {
   return (
-    <div className="input-group">
-      {label && <label htmlFor={id}>{label}</label>}
+    <div className="mb-4">
+      {label && <label htmlFor={id} className="block mb-2 text-sm font-medium text-text-primary">{label}</label>}
       <input
         type={type}
         id={id}
@@ -12,7 +11,7 @@ const Input = ({ type = 'text', id, value, onChange, placeholder, required = fal
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className={`input ${className}`}
+        className={`w-full p-2 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none ${className}`}
       />
     </div>
   );

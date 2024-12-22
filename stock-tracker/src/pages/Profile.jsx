@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db } from '../../config/firebase';
+import { auth, db } from '../config/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
-import FormInput from '../../components/FormInput/FormInput';
-import Button from '../../components/Button/Button';
-import ProfilePictureUpload from '../../components/ProfilePictureUpload/ProfilePictureUpload';
-import './Profile.css';
+import FormInput from '../components/FormInput';
+import Button from '../components/Button';
+import ProfilePictureUpload from '../components/ProfilePictureUpload';
 
 function Profile() {
   const [userData, setUserData] = useState(null);
@@ -90,25 +89,29 @@ function Profile() {
   };
 
   if (loading) {
-    return <div className="profile-loading">Loading...</div>;
+    return <div className="text-center text-text-primary text-xl mt-8">Loading...</div>;
   }
 
   if (error) {
-    return <div className="profile-error">{error}</div>;
+    return <div className="text-center text-error text-xl mt-8">{error}</div>;
   }
 
   return (
-    <div className="profile-container">
-      <h2>User Profile</h2>
+    <div className="max-w-2xl mx-auto mt-8 p-6 bg-secondary rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6 text-center text-text-primary">User Profile</h2>
       {userData && (
-        <div className="profile-info">
-          <div className="profile-picture">
-            <img src={userData.photoURL || '/placeholder.svg?height=150&width=150'} alt="Profile" />
+        <div className="space-y-6">
+          <div className="flex flex-col items-center">
+            <img 
+              src={userData.photoURL || '/placeholder.svg?height=150&width=150'} 
+              alt="Profile" 
+              className="w-32 h-32 rounded-full object-cover mb-4"
+            />
             {editMode && (
               <ProfilePictureUpload onUploadSuccess={handleProfilePictureUpload} />
             )}
           </div>
-          <div className="profile-details">
+          <div className="space-y-4">
             <FormInput
               type="text"
               id="displayName"
@@ -136,7 +139,7 @@ function Profile() {
               disabled={!editMode}
             />
           </div>
-          <div className="profile-actions">
+          <div className="flex justify-center space-x-4">
             {editMode ? (
               <>
                 <Button onClick={handleSave}>Save</Button>
