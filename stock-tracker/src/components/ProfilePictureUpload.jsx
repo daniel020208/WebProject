@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
-import { auth, storage } from '../config/firebase';
+import { auth, storage } from '../config/firebase.js';
 import Button from './Button';
 
 function ProfilePictureUpload({ onUploadSuccess }) {

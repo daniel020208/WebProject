@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase';
-import { getUserStocks, saveUserStocks } from './utils/firestore';
+import { getUserStocks, saveUserStocks, getUserCryptos, saveUserCryptos } from './utils/firestore';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import AddStock from './pages/AddStock';
@@ -13,10 +13,12 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 
 const defaultStock = { id: 'default', symbol: 'MSFT', name: 'Microsoft Corporation' };
+const defaultCrypto = { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' };
 
 function App() {
   const [user, setUser] = useState(null);
   const [stocks, setStocks] = useState([defaultStock]);
+  const [cryptos, setCryptos] = useState([defaultCrypto]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,10 +26,13 @@ function App() {
       if (user) {
         try {
           const userStocks = await getUserStocks(user.uid);
+          const userCryptos = await getUserCryptos(user.uid);
           setStocks(userStocks.length > 0 ? userStocks : [defaultStock]);
+          setCryptos(userCryptos.length > 0 ? userCryptos : [defaultCrypto]);
         } catch (error) {
-          console.error('Error fetching user stocks:', error);
+          console.error('Error fetching user data:', error);
           setStocks([defaultStock]);
+          setCryptos([defaultCrypto]);
         } finally {
           setUser(user);
           setLoading(false);
@@ -60,11 +65,21 @@ function App() {
     }
   }
 
-  function handleReorderStocks(reorderedStocks) {
-    setStocks(reorderedStocks);
+  function handleAddCrypto(newCrypto) {
+    if (user && !cryptos.some(crypto => crypto.id === newCrypto.id)) {
+      const updatedCryptos = [...cryptos, newCrypto];
+      setCryptos(updatedCryptos);
+      saveUserCryptos(user.uid, updatedCryptos)
+        .catch(error => console.error('Error saving new crypto:', error));
+    }
+  }
+
+  function handleDeleteCrypto(cryptoId) {
     if (user) {
-      saveUserStocks(user.id, reorderedStocks)
-        .catch(error => console.error('Error saving reordered stocks:', error));
+      const updatedCryptos = cryptos.filter(crypto => crypto.id !== cryptoId);
+      setCryptos(updatedCryptos.length > 0 ? updatedCryptos : [defaultCrypto]);
+      saveUserCryptos(user.uid, updatedCryptos)
+        .catch(error => console.error('Error deleting crypto:', error));
     }
   }
 
@@ -82,9 +97,9 @@ function App() {
               <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
               <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/profile" />} />
               <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
-              <Route path="/dashboard" element={user ? <Dashboard stocks={stocks} onDeleteStock={handleDeleteStock} onReorderStocks={handleReorderStocks} /> : <Navigate to="/login" />} />
-              <Route path="/add-stock" element={user ? <AddStock onAddStock={handleAddStock} /> : <Navigate to="/login" />} />
-              <Route path="/compare-stocks" element={user ? <CompareStocks stocks={stocks} /> : <Navigate to="/login" />} />
+              <Route path="/dashboard" element={user ? <Dashboard stocks={stocks} cryptos={cryptos} onDeleteStock={handleDeleteStock} onDeleteCrypto={handleDeleteCrypto} /> : <Navigate to="/login" />} />
+              <Route path="/add-stock" element={user ? <AddStock onAddStock={handleAddStock} onAddCrypto={handleAddCrypto} /> : <Navigate to="/login" />} />
+              <Route path="/compare-stocks" element={user ? <CompareStocks stocks={stocks} cryptos={cryptos} /> : <Navigate to="/login" />} />
               <Route path="/ai-assistant" element={user ? <AIAssistant /> : <Navigate to="/login" />} />
               <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
             </Routes>
