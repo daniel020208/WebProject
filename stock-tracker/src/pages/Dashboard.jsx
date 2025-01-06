@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import StockCard from '../components/StockCard';
-import CryptoCard from '../components/CryptoCard';
-import Button from '../components/Button';
+import StockCard from '../Components/StockCard';
+import CryptoCard from '../Components/CryptoCard';
+import Button from '../Components/Button';
 
 function Dashboard({ stocks, cryptos, onDeleteStock, onDeleteCrypto }) {
   const [showStocks, setShowStocks] = useState(true);

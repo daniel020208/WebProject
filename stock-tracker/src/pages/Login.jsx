@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useNavigate, Link } from 'react-router-dom';
-import Button from '../components/Button';
+import Button from '../Components/Button';
 
 function Login() {
   const [email, setEmail] = useState('');

@@ -3,9 +3,9 @@ import { auth, db } from '../config/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
-import FormInput from '../components/FormInput';
-import Button from '../components/Button';
-import ProfilePictureUpload from '../components/ProfilePictureUpload';
+import FormInput from '../Components/FormInput';
+import Button from '../Components/Button';
+import ProfilePictureUpload from '../Components/ProfilePictureUpload';
 
 function Profile() {
   const [userData, setUserData] = useState(null);

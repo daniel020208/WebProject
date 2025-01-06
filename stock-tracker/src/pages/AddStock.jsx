@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Button from '../components/Button';
+import Button from '../Components/Button';
 
 const TWELVE_DATA_API_KEY = import.meta.env.VITE_TWELVE_DATA_API_KEY;
 

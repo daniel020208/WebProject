@@ -3,12 +3,12 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase';
 import { getUserStocks, saveUserStocks, getUserCryptos, saveUserCryptos } from './utils/firestore';
-import Sidebar from './components/Sidebar';
+import Sidebar from './Components/Sidebar.jsx';
 import Dashboard from './pages/Dashboard';
 import AddStock from './pages/AddStock';
 import CompareStocks from './pages/CompareStocks';
 import AIAssistant from './pages/AIAssistant';
-import Profile from './pages/Profile';
+import Profile from './pages/Profile.jsx';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 
