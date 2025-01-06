@@ -8,7 +8,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 function CryptoCard({ crypto, onDelete }) {
   const [cryptoData, setCryptoData] = useState(null);
   const [error, setError] = useState(null);
-  const [timeframe, setTimeframe] = useState(30); // Default timeframe in days
+  const [timeframe, setTimeframe] = useState('m30'); // Default timeframe
   const [latestPrice, setLatestPrice] = useState(null);
   const [priceChange, setPriceChange] = useState(null);
   const [additionalInfo, setAdditionalInfo] = useState(null);
@@ -17,28 +17,42 @@ function CryptoCard({ crypto, onDelete }) {
     priceChange: false,
     volume: false,
     marketCap: false,
+    supply: false,
+    maxSupply: false,
   });
 
   useEffect(() => {
     async function fetchCryptoData() {
       try {
-        const response = await fetch(`https://api.coingecko.com/api/v3/coins/${crypto.id}/market_chart?vs_currency=usd&days=${timeframe}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
+        const [historyResponse, infoResponse] = await Promise.all([
+          fetch(`https://api.coincap.io/v2/assets/${crypto.id}/history?interval=${timeframe}`),
+          fetch(`https://api.coincap.io/v2/assets/${crypto.id}`)
+        ]);
 
-        if (!data.prices || data.prices.length === 0) {
+        if (!historyResponse.ok || !infoResponse.ok) {
+          throw new Error(`HTTP error! status: ${historyResponse.status || infoResponse.status}`);
+        }
+
+        const [historyData, infoData] = await Promise.all([
+          historyResponse.json(),
+          infoResponse.json()
+        ]);
+
+        if (!historyData.data || historyData.data.length === 0) {
           throw new Error('No data available for this cryptocurrency');
         }
 
-        const chartData = data.prices;
+        const prices = historyData.data;
+        const dataPoints = timeframe === 'm30' ? 48 : timeframe === 'h2' ? 84 : timeframe === 'h12' ? 60 : 30;
+        const step = Math.max(1, Math.floor(prices.length / dataPoints));
+        const processedPrices = prices.filter((_, index) => index % step === 0).slice(-dataPoints);
+
         setCryptoData({
-          labels: chartData.map(entry => new Date(entry[0]).toLocaleDateString()),
+          labels: processedPrices.map(entry => new Date(entry.time).toLocaleDateString()),
           datasets: [
             {
               label: 'Price (USD)',
-              data: chartData.map(entry => entry[1]),
+              data: processedPrices.map(entry => parseFloat(entry.priceUsd)),
               borderColor: '#10B981',
               backgroundColor: 'rgba(16, 185, 129, 0.2)',
               tension: 0.1,
@@ -47,19 +61,15 @@ function CryptoCard({ crypto, onDelete }) {
           ],
         });
 
-        const latestData = chartData[chartData.length - 1];
-        setLatestPrice(latestData[1]);
-        setPriceChange(latestData[1] - chartData[0][1]);
+        const latestPrice = parseFloat(infoData.data.priceUsd);
+        setLatestPrice(latestPrice);
+        setPriceChange(latestPrice - parseFloat(processedPrices[0].priceUsd));
 
-        // Fetch additional info
-        const infoResponse = await fetch(`https://api.coingecko.com/api/v3/coins/${crypto.id}`);
-        if (!infoResponse.ok) {
-          throw new Error(`HTTP error! status: ${infoResponse.status}`);
-        }
-        const infoData = await infoResponse.json();
         setAdditionalInfo({
-          volume: infoData.market_data.total_volume.usd,
-          marketCap: infoData.market_data.market_cap.usd,
+          volume: parseFloat(infoData.data.volumeUsd24Hr),
+          marketCap: parseFloat(infoData.data.marketCapUsd),
+          supply: parseFloat(infoData.data.supply),
+          maxSupply: infoData.data.maxSupply ? parseFloat(infoData.data.maxSupply) : null,
         });
 
         setError(null);
@@ -79,8 +89,10 @@ function CryptoCard({ crypto, onDelete }) {
   const infoExplanations = {
     currentPrice: "The most recent price of the cryptocurrency in USD.",
     priceChange: "The change in price over the selected time period.",
-    volume: "The total trading volume in the last 24 hours.",
+    volume: "The total trading volume in USD over the last 24 hours.",
     marketCap: "The total market value of the cryptocurrency's circulating supply.",
+    supply: "The amount of coins that are circulating in the market.",
+    maxSupply: "The maximum number of coins that will ever exist in the lifetime of the cryptocurrency.",
   };
 
   const toggleInfo = (key) => {
@@ -91,7 +103,7 @@ function CryptoCard({ crypto, onDelete }) {
     return <div className="bg-error text-white p-6 rounded-lg shadow-lg">Error: {error}</div>;
   }
 
-  if (!cryptoData) {
+  if (!cryptoData || !additionalInfo) {
     return <div className="bg-secondary text-text-primary p-6 rounded-lg shadow-lg">Loading...</div>;
   }
 
@@ -125,26 +137,44 @@ function CryptoCard({ crypto, onDelete }) {
               </button>
             </div>
             {showInfo.priceChange && <p className="text-sm text-text-secondary">{infoExplanations.priceChange}</p>}
-            {additionalInfo && (
-              <div className="space-y-3">
-                <div className="flex items-center">
-                  <p className="text-text-secondary">Volume: ${additionalInfo.volume.toLocaleString()}</p>
-                  <button className="ml-2 text-text-secondary hover:text-text-primary transition duration-300" onClick={() => toggleInfo('volume')}>
-                    <Info size={16} />
-                  </button>
-                </div>
-                {showInfo.volume && <p className="text-sm text-text-secondary">{infoExplanations.volume}</p>}
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <p className="text-text-secondary">Volume: ${additionalInfo.volume.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                <button className="ml-2 text-text-secondary hover:text-text-primary transition duration-300" onClick={() => toggleInfo('volume')}>
+                  <Info size={16} />
+                </button>
+              </div>
+              {showInfo.volume && <p className="text-sm text-text-secondary">{infoExplanations.volume}</p>}
+              <div className="flex items-center">
+                <p className="text-text-secondary">
+                  Market Cap: ${additionalInfo.marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+                <button className="ml-2 text-text-secondary hover:text-text-primary transition duration-300" onClick={() => toggleInfo('marketCap')}>
+                  <Info size={16} />
+                </button>
+              </div>
+              {showInfo.marketCap && <p className="text-sm text-text-secondary">{infoExplanations.marketCap}</p>}
+              <div className="flex items-center">
+                <p className="text-text-secondary">
+                  Supply: {additionalInfo.supply.toLocaleString(undefined, { maximumFractionDigits: 0 })} {crypto.symbol.toUpperCase()}
+                </p>
+                <button className="ml-2 text-text-secondary hover:text-text-primary transition duration-300" onClick={() => toggleInfo('supply')}>
+                  <Info size={16} />
+                </button>
+              </div>
+              {showInfo.supply && <p className="text-sm text-text-secondary">{infoExplanations.supply}</p>}
+              {additionalInfo.maxSupply && (
                 <div className="flex items-center">
                   <p className="text-text-secondary">
-                    Market Cap: ${additionalInfo.marketCap.toLocaleString()}
+                    Max Supply: {additionalInfo.maxSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })} {crypto.symbol.toUpperCase()}
                   </p>
-                  <button className="ml-2 text-text-secondary hover:text-text-primary transition duration-300" onClick={() => toggleInfo('marketCap')}>
+                  <button className="ml-2 text-text-secondary hover:text-text-primary transition duration-300" onClick={() => toggleInfo('maxSupply')}>
                     <Info size={16} />
                   </button>
                 </div>
-                {showInfo.marketCap && <p className="text-sm text-text-secondary">{infoExplanations.marketCap}</p>}
-              </div>
-            )}
+              )}
+              {showInfo.maxSupply && additionalInfo.maxSupply && <p className="text-sm text-text-secondary">{infoExplanations.maxSupply}</p>}
+            </div>
           </div>
           <div className="h-64 flex-grow">
             <Line 
@@ -185,17 +215,22 @@ function CryptoCard({ crypto, onDelete }) {
         </div>
       </div>
       <div className="bg-primary p-4 flex justify-center space-x-4">
-        {['7', '30', '90', '365'].map((tf) => (
+        {[
+          { label: '1D', value: 'm30' },
+          { label: '1W', value: 'h2' },
+          { label: '1M', value: 'h12' },
+          { label: '1Y', value: 'd1' },
+        ].map(({ label, value }) => (
           <button
-            key={tf}
-            onClick={() => setTimeframe(parseInt(tf))}
+            key={value}
+            onClick={() => setTimeframe(value)}
             className={`px-4 py-2 rounded-lg ${
-              timeframe === parseInt(tf) 
+              timeframe === value
                 ? 'bg-accent text-white' 
                 : 'bg-secondary text-text-primary hover:bg-accent hover:text-white'
             } transition duration-300 ease-in-out transform hover:scale-105`}
           >
-            {tf === '7' ? '1W' : tf === '30' ? '1M' : tf === '90' ? '3M' : '1Y'}
+            {label}
           </button>
         ))}
       </div>

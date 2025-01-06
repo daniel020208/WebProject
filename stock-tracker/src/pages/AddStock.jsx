@@ -19,14 +19,19 @@ function AddStock({ onAddStock, onAddCrypto }) {
     try {
       let results;
       if (isCrypto) {
-        const response = await fetch(`https://api.coingecko.com/api/v3/search?query=${query}`);
+        const response = await fetch(`https://api.coincap.io/v2/assets?search=${query}&limit=10`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-        results = data.coins.slice(0, 10).map(coin => ({
-          id: coin.id,
-          symbol: coin.symbol,
-          name: coin.name,
-        }));
+
+        if (data.data && data.data.length > 0) {
+          setSearchResults(data.data.map(coin => ({
+            id: coin.id,
+            symbol: coin.symbol,
+            name: coin.name,
+          })));
+        } else {
+          setError('No results found');
+        }
       } else {
         const response = await fetch(`https://api.twelvedata.com/symbol_search?symbol=${query}&apikey=${TWELVE_DATA_API_KEY}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -41,11 +46,9 @@ function AddStock({ onAddStock, onAddCrypto }) {
           }));
       }
 
-      if (results.length === 0) {
+      if (results && results.length === 0 && !isCrypto) {
         setError('No results found');
-      } else {
-        setSearchResults(results);
-      }
+      } 
     } catch (err) {
       console.error("Error details:", err);
       setError(`Error searching for ${isCrypto ? 'cryptocurrencies' : 'stocks'}: ${err.message}`);
