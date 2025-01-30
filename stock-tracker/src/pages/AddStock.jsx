@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Button from '../Components/Button';
+import Button from '../components/Button';
 
 const TWELVE_DATA_API_KEY = import.meta.env.VITE_TWELVE_DATA_API_KEY;
 
@@ -44,11 +44,13 @@ function AddStock({ onAddStock, onAddCrypto }) {
             symbol: stock.symbol,
             name: stock.instrument_name,
           }));
-      }
 
-      if (results && results.length === 0 && !isCrypto) {
-        setError('No results found');
-      } 
+        if (results.length === 0) {
+          setError('No results found');
+        } else {
+          setSearchResults(results);
+        }
+      }
     } catch (err) {
       console.error("Error details:", err);
       setError(`Error searching for ${isCrypto ? 'cryptocurrencies' : 'stocks'}: ${err.message}`);
@@ -123,4 +125,3 @@ function AddStock({ onAddStock, onAddCrypto }) {
 }
 
 export default AddStock;
-

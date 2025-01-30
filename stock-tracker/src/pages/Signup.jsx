@@ -3,7 +3,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { setDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { useNavigate, Link } from 'react-router-dom';
-import Button from '../Components/Button'; 
+import Button from '../components/Button';
 
 function Signup() {
   const [email, setEmail] = useState("");

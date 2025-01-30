@@ -1,21 +1,40 @@
-import React from 'react';
+const FormInput = ({ type, id, name, value, onChange, label, disabled, icon, textarea }) => {
+  const inputClasses =
+    "w-full p-2 pl-10 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none"
 
-const FormInput = ({ type, id, value, onChange, placeholder, required, label, className }) => {
   return (
-    <div className="mb-4">
-      {label && <label htmlFor={id} className="block mb-2 text-sm font-medium text-text-primary">{label}</label>}
-      <input
-        type={type}
-        id={id}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        className={`w-full p-2 bg-primary text-text-primary border border-gray-600 rounded focus:outline-none focus:border-accent ${className}`}
-      />
+    <div className="form-group relative">
+      {label && (
+        <label htmlFor={id} className="block mb-2 text-sm font-medium text-text-primary">
+          {label}
+        </label>
+      )}
+      <div className="relative">
+        {icon && <span className="absolute inset-y-0 left-0 flex items-center pl-3">{icon}</span>}
+        {textarea ? (
+          <textarea
+            id={id}
+            name={name}
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            className={`${inputClasses} h-24 resize-none`}
+          />
+        ) : (
+          <input
+            type={type}
+            id={id}
+            name={name}
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            className={inputClasses}
+          />
+        )}
+      </div>
     </div>
-  );
-};
+  )
+}
 
-export default FormInput;
+export default FormInput
 

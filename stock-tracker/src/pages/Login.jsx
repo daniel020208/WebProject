@@ -1,113 +1,142 @@
-import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import { useNavigate, Link } from 'react-router-dom';
-import Button from '../Components/Button';
+import { useState } from "react"
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth"
+import { auth, db } from "../config/firebase"
+import { useNavigate } from "react-router-dom"
+import { doc, setDoc } from "firebase/firestore"
+import Button from "../components/Button"
+import FormInput from "../Components/FormInput"
+import { Eye, EyeOff } from "lucide-react"
+
+
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [displayName, setDisplayName] = useState("")
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [error, setError] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const navigate = useNavigate()
 
-  const validateForm = () => {
-    if (!email || !password) {
-      setError('Both email and password are required.');
-      return false;
-    }
-    if (!email.includes('@') || !email.includes('.')) {
-      setError('Please enter a valid email address.');
-      return false;
-    }
-    return true;
-  };
+  const handleAuth = async (e) => {
+    e.preventDefault()
+    setError(null)
+    setIsLoading(true)
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!validateForm()) {
-      return;
+    if (isSignUp && password !== confirmPassword) {
+      setError("Passwords don't match")
+      setIsLoading(false)
+      return
     }
 
-    setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate('/dashboard');
-    } catch (error) {
-      switch (error.code) {
-        case 'auth/user-not-found':
-          setError('No user found with this email. Please check your email or sign up.');
-          break;
-        case 'auth/wrong-password':
-          setError('Incorrect password. Please try again.');
-          break;
-        case 'auth/invalid-email':
-          setError('Invalid email address.');
-          break;
-        default:
-          setError('An error occurred during login. Please try again later.');
+      if (isSignUp) {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+        const user = userCredential.user
+        await setDoc(doc(db, "users", user.uid), {
+          email,
+          displayName,
+          createdAt: new Date().toISOString(),
+        })
+      } else {
+        await signInWithEmailAndPassword(auth, email, password)
       }
+      navigate("/dashboard")
+    } catch (error) {
+      console.error("Error during authentication:", error)
+      setError(error.message)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
+
+  const togglePasswordVisibility = (field) => {
+    if (field === "password") {
+      setShowPassword(!showPassword)
+    } else if (field === "confirmPassword") {
+      setShowConfirmPassword(!showConfirmPassword)
+    }
+  }
 
   return (
     <div className="max-w-md mx-auto mt-8 p-6 bg-secondary rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center text-text-primary">Login</h2>
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block mb-2 text-sm font-medium text-text-primary">Email</label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
+      <h2 className="text-2xl font-bold mb-6 text-center text-text-primary">{isSignUp ? "Sign Up" : "Log In"}</h2>
+      <form onSubmit={handleAuth} className="space-y-4">
+        {isSignUp && (
+          <FormInput
+            type="text"
+            id="displayName"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            label="Display Name"
             required
-            className="w-full p-2 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none"
           />
-        </div>
-        <div>
-          <label htmlFor="password" className="block mb-2 text-sm font-medium text-text-primary">Password</label>
-          <input
-            type={showPassword ? 'text' : 'password'}
+        )}
+        <FormInput
+          type="email"
+          id="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          label="Email"
+          required
+        />
+        <div className="relative">
+          <FormInput
+            type={showPassword ? "text" : "password"}
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            label="Password"
             required
-            className="w-full p-2 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none"
           />
+          <button
+            type="button"
+            onClick={() => togglePasswordVisibility("password")}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-text-secondary"
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
         </div>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="showPassword"
-            checked={showPassword}
-            onChange={() => setShowPassword(!showPassword)}
-            className="mr-2"
-          />
-          <label htmlFor="showPassword" className="text-text-primary">Show Password</label>
-        </div>
-        <Button 
-          type="submit" 
-          disabled={isLoading} 
-          className="w-full"
-        >
-          {isLoading ? 'Logging in...' : 'Login'}
+        {isSignUp && (
+          <div className="relative">
+            <FormInput
+              type={showConfirmPassword ? "text" : "password"}
+              id="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              label="Confirm Password"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility("confirmPassword")}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-text-secondary"
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+        )}
+        <Button type="submit" disabled={isLoading} className="w-full">
+          {isLoading ? "Processing..." : isSignUp ? "Sign Up" : "Log In"}
         </Button>
       </form>
-      {error && <p className="mt-4 text-error text-center" role="alert">{error}</p>}
+      {error && (
+        <p className="mt-4 text-error text-center" role="alert">
+          {error}
+        </p>
+      )}
       <p className="mt-4 text-center text-text-secondary">
-        Don't have an account? <Link to="/signup" className="text-accent hover:underline">Sign up</Link>
+        {isSignUp ? "Already have an account?" : "Don't have an account?"}
+        <button onClick={() => setIsSignUp(!isSignUp)} className="text-accent hover:underline ml-1">
+          {isSignUp ? "Log In" : "Sign Up"}
+        </button>
       </p>
     </div>
-  );
+  )
 }
 
-export default Login;
+export default Login
 
