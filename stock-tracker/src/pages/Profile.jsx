@@ -1,23 +1,22 @@
+"use client"
+
 import { useState, useEffect } from "react"
 import { getAuth, updateProfile } from "firebase/auth"
 import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore"
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"
-import FormInput from "../Components/FormInput"
+import FormInput from "../components/FormInput"
 import Button from "../components/Button"
 import { useNavigate } from "react-router-dom"
-import { Camera, Mail, Phone, MapPin, Briefcase, Calendar, Globe, User, Shield } from "lucide-react"
+import { User, Mail, Phone, MapPin, Briefcase, Calendar, Globe } from "lucide-react"
 
-const Profile = ({ user }) => {
+function Profile({ user }) {
   const auth = getAuth()
   const db = getFirestore()
-  const storage = getStorage()
 
   const [userData, setUserData] = useState({})
   const [editMode, setEditMode] = useState(false)
   const [editedData, setEditedData] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [profileImage, setProfileImage] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -31,7 +30,6 @@ const Profile = ({ user }) => {
             setUserData(data)
             setEditedData(data)
           }
-          setProfileImage(user.photoURL)
         } catch (err) {
           setError("Failed to fetch user data")
         } finally {
@@ -76,27 +74,6 @@ const Profile = ({ user }) => {
     setEditedData(userData)
   }
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0]
-    if (file && user) {
-      try {
-        const storageRef = ref(storage, `profile_pictures/${user.uid}`)
-        await uploadBytes(storageRef, file)
-        const downloadURL = await getDownloadURL(storageRef)
-        await updateProfile(user, { photoURL: downloadURL })
-        setProfileImage(downloadURL)
-
-        // Update Firestore with the new photo URL
-        const userDoc = doc(db, "users", user.uid)
-        await updateDoc(userDoc, { photoURL: downloadURL })
-      } catch (err) {
-        setError("Failed to upload image")
-      }
-    }
-  }
-
-  
-
   if (loading) {
     return <div className="text-center text-text-primary">Loading...</div>
   }
@@ -111,53 +88,30 @@ const Profile = ({ user }) => {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto bg-secondary rounded-lg shadow-md">
-      <h2 className="text-3xl font-bold mb-6 text-text-primary">Profile</h2>
-      {error && <p className="text-error mb-4">{error}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <div className="mb-6 text-center">
-            <div className="relative inline-block">
-              <img
-                src={profileImage || "/placeholder.svg?height=200&width=200"}
-                alt="Profile"
-                className="w-48 h-48 rounded-full mx-auto mb-4 object-cover"
-              />
-              <label
-                htmlFor="profile-image-upload"
-                className="absolute bottom-0 right-0 bg-accent hover:bg-accent-dark text-white rounded-full p-2 cursor-pointer"
-              >
-                <Camera size={24} />
-              </label>
-            </div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-              id="profile-image-upload"
+    <div className="max-w-4xl mx-auto bg-secondary rounded-lg shadow-md overflow-hidden">
+      <div className="md:flex">
+        <div className="md:w-1/3 bg-primary p-6">
+          <div className="text-center">
+            <img
+              src={user.photoURL || `https://api.dicebear.com/6.x/initials/svg?seed=${user.displayName}`}
+              alt="Profile"
+              className="w-32 h-32 rounded-full mx-auto mb-4 border-4 border-accent"
             />
-          </div>
-          <h3 className="text-2xl font-semibold text-center text-text-primary mb-2">
-            {userData.displayName || user.displayName}
-          </h3>
-          <p className="text-text-secondary text-center mb-4">{userData.title || "No title set"}</p>
-          <div className="flex justify-center space-x-2 mb-6">
-            {editMode ? (
-              <>
-                <Button onClick={handleSave}>Save</Button>
-                <Button onClick={handleCancel} variant="outline">
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button onClick={handleEdit}>Edit Profile</Button>
+            <h3 className="text-2xl font-semibold text-text-primary mb-2">
+              {userData.displayName || user.displayName}
+            </h3>
+            <p className="text-text-secondary mb-4">{userData.title || "No title set"}</p>
+            {!editMode && (
+              <Button onClick={handleEdit} className="w-full">
+                Edit Profile
+              </Button>
             )}
           </div>
-          
         </div>
-        <div className="md:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:w-2/3 p-6">
+          <h2 className="text-3xl font-bold mb-6 text-text-primary">Profile Information</h2>
+          {error && <p className="text-error mb-4">{error}</p>}
+          <form className="space-y-4">
             <FormInput
               type="text"
               id="displayName"
@@ -219,17 +173,6 @@ const Profile = ({ user }) => {
             />
             <FormInput
               type="text"
-              id="role"
-              name="role"
-              value={userData.role || ""}
-              label="User Role"
-              disabled={true}
-              icon={<Shield className="w-5 h-5 text-text-secondary" />}
-            />
-          </div>
-          <div>
-            <FormInput
-              type="text"
               id="bio"
               name="bio"
               value={editMode ? editedData.bio : userData.bio || ""}
@@ -239,7 +182,15 @@ const Profile = ({ user }) => {
               icon={<Globe className="w-5 h-5 text-text-secondary" />}
               textarea
             />
-          </div>
+          </form>
+          {editMode && (
+            <div className="flex justify-end space-x-4 mt-6">
+              <Button onClick={handleCancel} variant="outline">
+                Cancel
+              </Button>
+              <Button onClick={handleSave}>Save Changes</Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

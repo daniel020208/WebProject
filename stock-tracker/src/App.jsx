@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-d
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "./config/firebase"
 import { getUserStocks, getUserCryptos, saveUserStocks, saveUserCryptos } from "./utils/firestore"
-import Sidebar from "./components/Sidebar"
+import Sidebar from "./Components/Sidebar"
 import Dashboard from "./pages/Dashboard"
 import AddStock from "./pages/AddStock"
 import CompareStocks from "./pages/CompareStocks"

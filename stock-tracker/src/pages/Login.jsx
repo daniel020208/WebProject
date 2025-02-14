@@ -4,7 +4,7 @@ import { auth, db } from "../config/firebase"
 import { useNavigate } from "react-router-dom"
 import { doc, setDoc } from "firebase/firestore"
 import Button from "../components/Button"
-import FormInput from "../Components/FormInput"
+import FormInput from "../components/FormInput"
 import { Eye, EyeOff } from "lucide-react"
 
 

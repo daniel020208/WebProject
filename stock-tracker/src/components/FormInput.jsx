@@ -1,6 +1,5 @@
-const FormInput = ({ type, id, name, value, onChange, label, disabled, icon, textarea }) => {
-  const inputClasses =
-    "w-full p-2 pl-10 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none"
+function FormInput({ type, id, name, value, onChange, label, disabled, icon, textarea }) {
+  const inputClasses = "input"
 
   return (
     <div className="form-group relative">

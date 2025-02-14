@@ -1,19 +1,22 @@
-import React from 'react';
+function Button({ children, onClick, type = "button", disabled = false, className = "", variant = "primary" }) {
+  const baseClasses = "px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 ease-in-out"
+  const variantClasses = {
+    primary: "bg-accent text-white hover:bg-opacity-90",
+    secondary: "bg-secondary text-text-primary hover:bg-opacity-90",
+    outline: "bg-transparent border border-accent text-accent hover:bg-accent hover:text-white",
+  }
 
-const Button = ({ children, onClick, type = 'button', disabled = false, className = '' }) => {
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`px-4 py-2 bg-accent text-white rounded hover:bg-accent-dark transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-opacity-50 ${
-        disabled ? 'opacity-50 cursor-not-allowed' : ''
-      } ${className}`}
+      className={`${baseClasses} ${variantClasses[variant]} ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
     >
       {children}
     </button>
-  );
-};
+  )
+}
 
-export default Button;
+export default Button
 

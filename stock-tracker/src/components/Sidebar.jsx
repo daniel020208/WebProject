@@ -4,7 +4,7 @@ import { Home, PlusSquare, BarChart2, Bot, LogIn, LogOut, User, Shield } from "l
 import { signOut } from "firebase/auth"
 import { auth } from "../config/firebase"
 
-const ADMIN_EMAIL = "daniel.golod2008@gmail.com" // Replace with your desired admin email
+const ADMIN_EMAIL = "daniel.golod2008@gmail.com"
 
 function Sidebar({ isAuthenticated, user }) {
   const navigate = useNavigate()
