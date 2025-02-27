@@ -1,10 +1,10 @@
+"use client"
+
 import { useState } from "react"
 import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Home, PlusSquare, BarChart2, Bot, LogIn, LogOut, User, Shield } from "lucide-react"
 import { signOut } from "firebase/auth"
 import { auth } from "../config/firebase"
-
-const ADMIN_EMAIL = "daniel.golod2008@gmail.com"
 
 function Sidebar({ isAuthenticated, user }) {
   const navigate = useNavigate()
@@ -79,7 +79,7 @@ function Sidebar({ isAuthenticated, user }) {
               </Link>
             </li>
           )}
-          {user && user.email === ADMIN_EMAIL && (
+          {user && user.role === "admin" && (
             <li>
               <Link
                 to="/admin"

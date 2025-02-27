@@ -1,8 +1,11 @@
+"use client"
+
 import { useState, useEffect } from "react"
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom"
 import { onAuthStateChanged } from "firebase/auth"
-import { auth } from "./config/firebase"
+import { auth, db } from "./config/firebase"
 import { getUserStocks, getUserCryptos, saveUserStocks, saveUserCryptos } from "./utils/firestore"
+import { doc, getDoc } from "firebase/firestore"
 import Sidebar from "./Components/Sidebar"
 import Dashboard from "./pages/Dashboard"
 import AddStock from "./pages/AddStock"
@@ -33,14 +36,20 @@ function App() {
           const userCryptos = await getUserCryptos(user.uid)
           setStocks(userStocks.length ? userStocks : defaultStocks)
           setCryptos(userCryptos.length ? userCryptos : defaultCryptos)
+
+          // Fetch user role
+          const userDoc = await getDoc(doc(db, "users", user.uid))
+          const userData = userDoc.data()
+          setUser({ ...user, role: userData?.role || "user" })
         } catch (error) {
           console.error("Error fetching user data:", error)
+          setUser(user)
         }
       } else {
+        setUser(null)
         setStocks(defaultStocks)
         setCryptos(defaultCryptos)
       }
-      setUser(user)
       setLoading(false)
     })
 
@@ -95,6 +104,7 @@ function App() {
           <div className="max-w-7xl mx-auto">
             <Routes>
               <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
+              <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/dashboard" />} /> 
               <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/dashboard" />} />
               <Route path="/profile" element={<Profile user={user} />} />
               <Route
@@ -125,8 +135,11 @@ function App() {
                 path="/compare-stocks"
                 element={<CompareStocks stocks={stocks} cryptos={cryptos} user={user} isAuthenticated={!!user} />}
               />
-              <Route path="/ai-assistant" element={<AIAssistant />} />
-              <Route path="/admin" element={<AdminDashboard user={user} />} />
+              <Route path="/ai-assistant" element={<AIAssistant user={user} stocks={stocks} cryptos={cryptos} />} />
+              <Route
+                path="/admin"
+                element={user && user.role === "admin" ? <AdminDashboard user={user} /> : <Navigate to="/dashboard" />}
+              />
               <Route
                 path="/"
                 element={

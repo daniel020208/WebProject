@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import Button from "../components/Button"
 
@@ -40,13 +42,12 @@ function AddStock({ onAddStock, onAddCrypto }) {
         )
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
         const data = await response.json()
-        results = data
-          .filter((stock) => stock.exchangeShortName === "NYSE" || stock.exchangeShortName === "NASDAQ")
-          .map((stock) => ({
-            id: stock.symbol,
-            symbol: stock.symbol,
-            name: stock.name,
-          }))
+        results = data.map((stock) => ({
+          id: stock.symbol,
+          symbol: stock.symbol,
+          name: stock.name,
+          exchange: stock.exchangeShortName,
+        }))
 
         if (results.length === 0) {
           setError("No results found")
@@ -81,7 +82,6 @@ function AddStock({ onAddStock, onAddCrypto }) {
           <div className="relative">
             <input
               type="checkbox"
-              value=""
               className="sr-only peer"
               checked={isCrypto}
               onChange={() => setIsCrypto(!isCrypto)}
@@ -119,6 +119,7 @@ function AddStock({ onAddStock, onAddCrypto }) {
               <div className="flex justify-between items-center p-4">
                 <span className="text-text-primary">
                   {item.name} ({item.symbol.toUpperCase()})
+                  {!isCrypto && item.exchange && <span className="ml-2 text-sm text-gray-400">({item.exchange})</span>}
                 </span>
                 <Button
                   onClick={() => handleAdd(item)}

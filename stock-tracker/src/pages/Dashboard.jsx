@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
 import { Link } from "react-router-dom"
-import StockCard from "../Components/StockCard"
+import StockCard from "../components/StockCard"
 import CryptoCard from "../Components/CryptoCard"
 import Button from "../components/Button"
 import Input from "../components/Input"
