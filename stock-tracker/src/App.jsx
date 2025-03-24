@@ -1,12 +1,12 @@
-"use client"
-
 import { useState, useEffect } from "react"
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { onAuthStateChanged } from "firebase/auth"
-import { auth, db } from "./config/firebase"
-import { getUserStocks, getUserCryptos, saveUserStocks, saveUserCryptos } from "./utils/firestore"
-import { doc, getDoc } from "firebase/firestore"
-import Sidebar from "./Components/Sidebar"
+import { auth } from "./config/firebase"
+import { saveUserStocks, saveUserCryptos } from "./utils/firestore"
+import { ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import Sidebar from "./components/Sidebar"
+import ThemeToggle from "./components/ThemeToggle"
 import Dashboard from "./pages/Dashboard"
 import AddStock from "./pages/AddStock"
 import CompareStocks from "./pages/CompareStocks"
@@ -15,149 +15,298 @@ import Profile from "./pages/Profile"
 import Login from "./pages/Login"
 import Signup from "./pages/Signup"
 import AdminDashboard from "./pages/AdminDashboard"
-
-const API_KEY = import.meta.env.VITE_FINANCIAL_MODELING_PREP_API_KEY
+import { db } from "./config/firebase"
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore"
+// Import API keys from central configuration if needed
+// import { FMP_API_KEY } from "./config/apiKeys"
 
 const defaultStocks = [{ id: 1, name: "Microsoft", symbol: "MSFT", price: 300, change: 1.2, volume: 1000000 }]
 
-const defaultCryptos = [{ id: 1, name: "Bitcoin", symbol: "BTC", price: 45000, change: 2.5, volume: 500000 }]
+const defaultCryptos = [{ id: "bitcoin", name: "Bitcoin", symbol: "BTC", price: 45000, change: 2.5, volume: 500000 }]
 
 function App() {
   const [user, setUser] = useState(null)
   const [stocks, setStocks] = useState(defaultStocks)
   const [cryptos, setCryptos] = useState(defaultCryptos)
   const [loading, setLoading] = useState(true)
+  const [guestMode, setGuestMode] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
+
+  // Make enableGuestMode available globally
+  useEffect(() => {
+    window.enableGuestMode = () => {
+      setGuestMode(true)
+      setStocks(defaultStocks)
+      setCryptos(defaultCryptos)
+    }
+    return () => {
+      delete window.enableGuestMode
+    }
+  }, [])
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const userStocks = await getUserStocks(user.uid)
-          const userCryptos = await getUserCryptos(user.uid)
-          setStocks(userStocks.length ? userStocks : defaultStocks)
-          setCryptos(userCryptos.length ? userCryptos : defaultCryptos)
-
-          // Fetch user role
-          const userDoc = await getDoc(doc(db, "users", user.uid))
-          const userData = userDoc.data()
-          setUser({ ...user, role: userData?.role || "user" })
+          // Check if user document exists, create it if not
+          const userDocRef = doc(db, "users", user.uid)
+          const userDoc = await getDoc(userDocRef)
+          
+          if (!userDoc.exists()) {
+            await setDoc(userDocRef, {
+              email: user.email,
+              displayName: user.displayName || "",
+              createdAt: new Date(),
+              role: "user",
+              lastLogin: new Date(),
+              status: "active",
+              stocksCount: 0,
+              cryptosCount: 0
+            })
+          } else {
+            // Update last login time
+            await updateDoc(userDocRef, {
+              lastLogin: new Date(),
+              status: "active"
+            })
+          }
+          
+          // Fetch user stocks
+          if (userDoc.exists() && userDoc.data().stocks) {
+            setStocks(userDoc.data().stocks)
+          }
+          
+          // Fetch user cryptos
+          if (userDoc.exists() && userDoc.data().cryptos) {
+            setCryptos(userDoc.data().cryptos)
+          }
         } catch (error) {
-          console.error("Error fetching user data:", error)
-          setUser(user)
+          console.error("Error setting up user:", error)
         }
+        setGuestMode(false)
+      } else if (guestMode) {
+        // Keep default stocks and cryptos for guest mode
       } else {
-        setUser(null)
+        // Reset to defaults when not logged in and not in guest mode
         setStocks(defaultStocks)
         setCryptos(defaultCryptos)
       }
+      setUser(user)
       setLoading(false)
+      setAuthChecked(true)
     })
 
     return () => unsubscribe()
+  }, [guestMode])
+
+  // Initialize theme based on user preference or system settings
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
   }, [])
 
-  const handleDeleteStock = async (stockId) => {
-    if (user) {
-      const updatedStocks = stocks.filter((stock) => stock.id !== stockId)
+  const handleAddStock = async (stock) => {
+    const existingStockIndex = stocks.findIndex((s) => s.symbol === stock.symbol)
+    
+    if (existingStockIndex !== -1) {
+      const updatedStocks = [...stocks]
+      updatedStocks[existingStockIndex] = stock
       setStocks(updatedStocks)
-      await saveUserStocks(user.uid, updatedStocks)
+      if (user) {
+        await saveUserStocks(user.uid, updatedStocks)
+      }
+      return
+    }
+    
+    const newStocks = [...stocks, stock]
+    setStocks(newStocks)
+    
+    if (user) {
+      try {
+        await saveUserStocks(user.uid, newStocks)
+        
+        // Update stocksCount in user document
+        const userDocRef = doc(db, "users", user.uid)
+        await updateDoc(userDocRef, {
+          stocksCount: newStocks.length
+        })
+      } catch (error) {
+        console.error("Error saving stock:", error)
+      }
+    }
+  }
+
+  const handleDeleteStock = async (stockId) => {
+    const newStocks = stocks.filter((stock) => stock.id !== stockId)
+    setStocks(newStocks)
+    
+    if (user) {
+      try {
+        await saveUserStocks(user.uid, newStocks)
+        
+        // Update stocksCount in user document
+        const userDocRef = doc(db, "users", user.uid)
+        await updateDoc(userDocRef, {
+          stocksCount: newStocks.length
+        })
+      } catch (error) {
+        console.error("Error deleting stock:", error)
+      }
+    }
+  }
+
+  const handleAddCrypto = async (crypto) => {
+    const existingCryptoIndex = cryptos.findIndex((c) => c.id === crypto.id)
+    
+    if (existingCryptoIndex !== -1) {
+      const updatedCryptos = [...cryptos]
+      updatedCryptos[existingCryptoIndex] = crypto
+      setCryptos(updatedCryptos)
+      if (user) {
+        await saveUserCryptos(user.uid, updatedCryptos)
+      }
+      return
+    }
+    
+    const newCryptos = [...cryptos, crypto]
+    setCryptos(newCryptos)
+    
+    if (user) {
+      try {
+        await saveUserCryptos(user.uid, newCryptos)
+        
+        // Update cryptosCount in user document
+        const userDocRef = doc(db, "users", user.uid)
+        await updateDoc(userDocRef, {
+          cryptosCount: newCryptos.length
+        })
+      } catch (error) {
+        console.error("Error saving crypto:", error)
+      }
     }
   }
 
   const handleDeleteCrypto = async (cryptoId) => {
+    const newCryptos = cryptos.filter((crypto) => crypto.id !== cryptoId)
+    setCryptos(newCryptos)
+    
     if (user) {
-      const updatedCryptos = cryptos.filter((crypto) => crypto.id !== cryptoId)
-      setCryptos(updatedCryptos)
-      await saveUserCryptos(user.uid, updatedCryptos)
+      try {
+        await saveUserCryptos(user.uid, newCryptos)
+        
+        // Update cryptosCount in user document
+        const userDocRef = doc(db, "users", user.uid)
+        await updateDoc(userDocRef, {
+          cryptosCount: newCryptos.length
+        })
+      } catch (error) {
+        console.error("Error deleting crypto:", error)
+      }
     }
   }
 
-  const handleAddStock = async (newStock) => {
-    if (user) {
-      const updatedStocks = [...stocks, newStock]
-      setStocks(updatedStocks)
-      await saveUserStocks(user.uid, updatedStocks)
-    } else {
-      setStocks([...stocks, newStock])
-    }
-  }
-
-  const handleAddCrypto = async (newCrypto) => {
-    if (user) {
-      const updatedCryptos = [...cryptos, newCrypto]
-      setCryptos(updatedCryptos)
-      await saveUserCryptos(user.uid, updatedCryptos)
-    } else {
-      setCryptos([...cryptos, newCrypto])
-    }
+  const enableGuestMode = () => {
+    setGuestMode(true)
+    setStocks(defaultStocks)
+    setCryptos(defaultCryptos)
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-50">
+        <div className="relative">
+          <div className="h-24 w-24 rounded-full border-t-4 border-b-4 border-accent animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center text-accent font-bold">Loading</div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <Router>
-      <div className="flex bg-background min-h-screen">
-        <Sidebar isAuthenticated={!!user} user={user} />
-        <main className="flex-grow p-6 ml-20 transition-all duration-300 ease-in-out">
-          <div className="max-w-7xl mx-auto">
+    <BrowserRouter>
+      <div className="app-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen transition-colors duration-300">
+        <Sidebar user={user} enableGuestMode={enableGuestMode} guestMode={guestMode} />
+        
+        <main className={`main-content transition-all duration-300 ${user || guestMode ? 'with-sidebar' : 'p-6'}`}>
+          <div className="flex justify-end mb-4">
+            <ThemeToggle />
+          </div>
+          
+          {authChecked && (
             <Routes>
-              <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
-              <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/dashboard" />} /> 
-              <Route path="/signup" element={!user ? <Signup /> : <Navigate to="/dashboard" />} />
-              <Route path="/profile" element={<Profile user={user} />} />
-              <Route
-                path="/dashboard"
+              <Route path="/login" element={(user || guestMode) ? <Navigate to="/dashboard" /> : <Login enableGuestMode={enableGuestMode} />} />
+              <Route path="/signup" element={(user || guestMode) ? <Navigate to="/dashboard" /> : <Signup enableGuestMode={enableGuestMode}/>} />
+              <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/login" />} />
+              <Route path="/profile/:id" element={<Profile user={user} />} />
+              <Route 
+                path="/dashboard" 
                 element={
-                  <Dashboard
+                  <Dashboard 
+                    user={user} 
+                    guestMode={guestMode}
                     stocks={stocks}
                     cryptos={cryptos}
                     onDeleteStock={handleDeleteStock}
                     onDeleteCrypto={handleDeleteCrypto}
-                    user={user}
-                    isAuthenticated={!!user}
                   />
-                }
+                } 
               />
-              <Route
-                path="/add-stock"
+              <Route 
+                path="/add-stock" 
                 element={
-                  <AddStock
+                  <AddStock 
+                    user={user}
+                    guestMode={guestMode}
                     onAddStock={handleAddStock}
                     onAddCrypto={handleAddCrypto}
-                    user={user}
-                    isAuthenticated={!!user}
+                    enableGuestMode={enableGuestMode}
                   />
-                }
+                } 
               />
-              <Route
-                path="/compare-stocks"
-                element={<CompareStocks stocks={stocks} cryptos={cryptos} user={user} isAuthenticated={!!user} />}
-              />
-              <Route path="/ai-assistant" element={<AIAssistant user={user} stocks={stocks} cryptos={cryptos} />} />
-              <Route
-                path="/admin"
-                element={user && user.role === "admin" ? <AdminDashboard user={user} /> : <Navigate to="/dashboard" />}
-              />
-              <Route
-                path="/"
+              <Route 
+                path="/compare-stocks" 
                 element={
-                  <Dashboard
-                    stocks={stocks}
-                    cryptos={cryptos}
-                    onDeleteStock={handleDeleteStock}
-                    onDeleteCrypto={handleDeleteCrypto}
-                    user={user}
-                    isAuthenticated={!!user}
+                  <CompareStocks 
+                    stocks={stocks} 
+                    cryptos={cryptos} 
+                    user={user} 
+                    guestMode={guestMode}
                   />
-                }
+                } 
               />
+              <Route path="/ai-assistant" element={<AIAssistant user={user} guestMode={guestMode} />} />
+              <Route 
+                path="/admin" 
+                element={
+                  user?.email === "daniel.golod2008@gmail.com" ? 
+                  <AdminDashboard user={user} /> : 
+                  <Navigate to="/dashboard" />
+                } 
+              />
+              <Route path="/" element={<Navigate to={(user || guestMode) ? "/dashboard" : "/login"} />} />
             </Routes>
-          </div>
+          )}
         </main>
+        
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
       </div>
-    </Router>
+    </BrowserRouter>
   )
 }
 

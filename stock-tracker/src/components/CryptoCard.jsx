@@ -11,9 +11,12 @@ import {
   Legend,
   Filler,
 } from "chart.js"
-import { Info, Trash2, TrendingUp, TrendingDown, RefreshCw, ExternalLink } from "lucide-react"
+import { Info, Trash2, TrendingUp, TrendingDown, RefreshCw, ChevronDown, ChevronUp } from "lucide-react"
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+
+const MAX_RETRIES = 3
+const INITIAL_RETRY_DELAY = 2000 // 2 seconds
 
 function CryptoCard({ crypto, onDelete }) {
   const [cryptoData, setCryptoData] = useState(null)
@@ -22,16 +25,12 @@ function CryptoCard({ crypto, onDelete }) {
   const [latestPrice, setLatestPrice] = useState(null)
   const [priceChange, setPriceChange] = useState(null)
   const [additionalInfo, setAdditionalInfo] = useState(null)
-  const [showInfo, setShowInfo] = useState({
-    currentPrice: false,
-    priceChange: false,
-    marketCap: false,
-    supply: false,
-    maxSupply: false,
-  })
+  const [showDetails, setShowDetails] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [retryCount, setRetryCount] = useState(0)
+  const [retryDelay, setRetryDelay] = useState(INITIAL_RETRY_DELAY)
 
-  const fetchCryptoData = async () => {
+  const fetchCryptoData = async (attempt = 0) => {
     setIsLoading(true)
     try {
       const [historyResponse, infoResponse] = await Promise.all([
@@ -40,6 +39,24 @@ function CryptoCard({ crypto, onDelete }) {
       ])
 
       if (!historyResponse.ok || !infoResponse.ok) {
+        if (historyResponse.status === 429 || infoResponse.status === 429) {
+          if (attempt < MAX_RETRIES) {
+            console.log(`Rate limited (429). Retrying in ${retryDelay/1000}s... (Attempt ${attempt + 1}/${MAX_RETRIES})`)
+            
+            setError(`Rate limit reached. Retrying in ${retryDelay/1000}s... (${attempt + 1}/${MAX_RETRIES})`)
+            
+            setRetryCount(attempt + 1)
+            const nextDelay = retryDelay * 2
+            setRetryDelay(nextDelay)
+            
+            setTimeout(() => {
+              fetchCryptoData(attempt + 1)
+            }, retryDelay)
+            return
+          } else {
+            throw new Error("API rate limit exceeded. Please try again later.")
+          }
+        }
         throw new Error(`HTTP error! status: ${historyResponse.status || infoResponse.status}`)
       }
 
@@ -48,6 +65,9 @@ function CryptoCard({ crypto, onDelete }) {
       if (!historyData.data || historyData.data.length === 0) {
         throw new Error("No data available for this cryptocurrency")
       }
+
+      setRetryCount(0)
+      setRetryDelay(INITIAL_RETRY_DELAY)
 
       const prices = historyData.data
       const dataPoints = timeframe === "m30" ? 48 : timeframe === "h2" ? 84 : timeframe === "h12" ? 60 : 30
@@ -76,6 +96,9 @@ function CryptoCard({ crypto, onDelete }) {
         marketCap: Number.parseFloat(infoData.data.marketCapUsd),
         supply: Number.parseFloat(infoData.data.supply),
         maxSupply: infoData.data.maxSupply ? Number.parseFloat(infoData.data.maxSupply) : null,
+        volume: Number.parseFloat(infoData.data.volumeUsd24Hr),
+        vwap24Hr: infoData.data.vwap24Hr ? Number.parseFloat(infoData.data.vwap24Hr) : null,
+        changePercent24Hr: Number.parseFloat(infoData.data.changePercent24Hr),
       })
 
       setError(null)
@@ -87,28 +110,20 @@ function CryptoCard({ crypto, onDelete }) {
       setPriceChange(null)
       setAdditionalInfo(null)
     } finally {
-      setIsLoading(false)
+      if (retryCount === 0 || retryCount === MAX_RETRIES) {
+        setIsLoading(false)
+      }
     }
   }
 
   useEffect(() => {
+    setRetryCount(0)
+    setRetryDelay(INITIAL_RETRY_DELAY)
     fetchCryptoData()
   }, [crypto.id, timeframe])
 
-  const infoExplanations = {
-    currentPrice: "The most recent price of the cryptocurrency in USD.",
-    priceChange: "The change in price over the selected time period.",
-    marketCap: "The total market value of the cryptocurrency's circulating supply.",
-    supply: "The amount of coins that are circulating in the market.",
-    maxSupply: "The maximum number of coins that will ever exist in the lifetime of the cryptocurrency.",
-  }
-
-  const toggleInfo = (key) => {
-    setShowInfo((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
-
-  if (error) {
-    return <div className="bg-error text-white p-6 rounded-lg shadow-lg">Error: {error}</div>
+  const toggleDetails = () => {
+    setShowDetails(!showDetails)
   }
 
   const chartOptions = {
@@ -149,138 +164,236 @@ function CryptoCard({ crypto, onDelete }) {
     },
   }
 
-  return (
-    <div className="bg-secondary border border-gray-700 rounded-lg overflow-hidden shadow-lg transition duration-300 ease-in-out hover:shadow-2xl h-full flex flex-col">
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h3 className="text-2xl font-bold text-text-primary">
-            {crypto.name} ({crypto.symbol.toUpperCase()})
-          </h3>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => onDelete(crypto.id)}
-              className="bg-error hover:bg-red-700 text-white font-bold p-2 rounded-lg transition duration-300 ease-in-out transform hover:scale-105"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="flex items-center">
-              <span className="text-3xl font-bold text-text-primary">
-                ${latestPrice ? latestPrice.toFixed(2) : "N/A"}
-              </span>
-              <button
-                className="ml-2 text-text-secondary hover:text-text-primary transition duration-300"
-                onClick={() => toggleInfo("currentPrice")}
+  const formatLargeNumber = (num) => {
+    if (num === "N/A") return "N/A";
+    if (num >= 1_000_000_000) {
+      return `$${(num / 1_000_000_000).toFixed(2)}B`;
+    } else if (num >= 1_000_000) {
+      return `$${(num / 1_000_000).toFixed(2)}M`;
+    } else if (num >= 1_000) {
+      return `$${(num / 1_000).toFixed(2)}K`;
+    }
+    return `$${num.toFixed(2)}`;
+  }
+
+  const formatSupply = (num) => {
+    if (num === "N/A") return "N/A";
+    if (num >= 1_000_000_000) {
+      return `${(num / 1_000_000_000).toFixed(2)}B`;
+    } else if (num >= 1_000_000) {
+      return `${(num / 1_000_000).toFixed(2)}M`;
+    } else if (num >= 1_000) {
+      return `${(num / 1_000).toFixed(2)}K`;
+    }
+    return num.toFixed(2);
+  }
+
+  if (error) {
+    return (
+      <tr className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors duration-200">
+        <td colSpan="4" className="p-4">
+          <div className="bg-error/10 border-2 border-error p-6 rounded-lg shadow-md">
+            <div className="flex flex-col items-center justify-center">
+              <div className="text-error mb-4 font-medium">{error}</div>
+              {error.includes("rate limit") && (
+                <div className="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                  The CoinCap API has a limit on the number of requests per minute.
+                </div>
+              )}
+              <button 
+                onClick={() => {
+                  setRetryCount(0);
+                  setRetryDelay(INITIAL_RETRY_DELAY);
+                  fetchCryptoData();
+                }}
+                className="bg-primary hover:bg-accent text-white font-medium py-2 px-4 rounded-lg flex items-center gap-2 transition-all duration-300"
               >
-                <Info size={16} />
+                <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+                {isLoading ? "Retrying..." : "Try Again"}
               </button>
             </div>
-            {showInfo.currentPrice && <p className="text-sm text-text-secondary">{infoExplanations.currentPrice}</p>}
-            {priceChange !== null && (
-              <div className="flex items-center">
-                <span className={`text-xl font-semibold ${priceChange >= 0 ? "text-success" : "text-error"}`}>
-                  {priceChange >= 0 ? (
-                    <TrendingUp className="inline mr-2" size={16} />
-                  ) : (
-                    <TrendingDown className="inline mr-2" size={16} />
-                  )}
-                  {priceChange >= 0 ? "+" : "-"}${Math.abs(priceChange).toFixed(2)} (
-                  {((priceChange / (latestPrice - priceChange)) * 100).toFixed(2)}%)
-                </span>
-                <button
-                  className="ml-2 text-text-secondary hover:text-text-primary transition duration-300"
-                  onClick={() => toggleInfo("priceChange")}
-                >
-                  <Info size={16} />
-                </button>
-              </div>
-            )}
-            {showInfo.priceChange && <p className="text-sm text-text-secondary">{infoExplanations.priceChange}</p>}
-            {additionalInfo && (
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <p className="text-text-secondary">
-                    Market Cap: ${additionalInfo.marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </p>
-                  <button
-                    className="ml-2 text-text-secondary hover:text-text-primary transition duration-300"
-                    onClick={() => toggleInfo("marketCap")}
-                  >
-                    <Info size={16} />
-                  </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <>
+      <tr 
+        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors duration-200 cursor-pointer"
+        onClick={toggleDetails}
+      >
+        <td className="p-4">
+          <div className="font-medium text-gray-900 dark:text-white">{crypto.name}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{crypto.symbol.toUpperCase()}</div>
+        </td>
+        <td className="p-4">
+          <div className="font-semibold text-gray-900 dark:text-white">
+            ${latestPrice ? latestPrice.toFixed(2) : "N/A"}
+          </div>
+        </td>
+        <td className="p-4">
+          {priceChange !== null ? (
+            <div className={`flex items-center font-medium ${priceChange >= 0 ? "text-success" : "text-error"}`}>
+              {priceChange >= 0 ? (
+                <TrendingUp className="mr-1" size={16} />
+              ) : (
+                <TrendingDown className="mr-1" size={16} />
+              )}
+              {priceChange >= 0 ? "+" : ""}${Math.abs(priceChange).toFixed(2)} (
+              {((priceChange / (latestPrice - priceChange)) * 100).toFixed(2)}%)
+            </div>
+          ) : (
+            <div className="text-gray-500 dark:text-gray-400">N/A</div>
+          )}
+        </td>
+        <td className="p-4">
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(crypto.id);
+              }}
+              className="p-2 text-gray-500 hover:text-error hover:bg-error/10 rounded-full transition-colors duration-200"
+              aria-label="Delete cryptocurrency"
+            >
+              <Trash2 size={18} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleDetails();
+              }}
+              className="p-2 text-gray-500 hover:text-accent hover:bg-accent/10 rounded-full transition-colors duration-200"
+              aria-label={showDetails ? "Hide details" : "Show details"}
+            >
+              {showDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      {showDetails && (
+        <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <td colSpan="4" className="p-6">
+            <div className="space-y-6">
+              {isLoading ? (
+                <div className="flex justify-center items-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                 </div>
-                {showInfo.marketCap && <p className="text-sm text-text-secondary">{infoExplanations.marketCap}</p>}
-                <div className="flex items-center">
-                  <p className="text-text-secondary">
-                    Supply: {additionalInfo.supply.toLocaleString(undefined, { maximumFractionDigits: 0 })}{" "}
-                    {crypto.symbol.toUpperCase()}
-                  </p>
-                  <button
-                    className="ml-2 text-text-secondary hover:text-text-primary transition duration-300"
-                    onClick={() => toggleInfo("supply")}
-                  >
-                    <Info size={16} />
-                  </button>
-                </div>
-                {showInfo.supply && <p className="text-sm text-text-secondary">{infoExplanations.supply}</p>}
-                {additionalInfo.maxSupply && (
-                  <div className="flex items-center">
-                    <p className="text-text-secondary">
-                      Max Supply: {additionalInfo.maxSupply.toLocaleString(undefined, { maximumFractionDigits: 0 })}{" "}
-                      {crypto.symbol.toUpperCase()}
-                    </p>
-                    <button
-                      className="ml-2 text-text-secondary hover:text-text-primary transition duration-300"
-                      onClick={() => toggleInfo("maxSupply")}
-                    >
-                      <Info size={16} />
-                    </button>
+              ) : (
+                <>
+                  {/* Chart Section */}
+                  <div>
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      <button
+                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                          timeframe === "m30"
+                            ? "bg-accent text-white"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                        }`}
+                        onClick={() => setTimeframe("m30")}
+                      >
+                        24H
+                      </button>
+                      <button
+                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                          timeframe === "h2"
+                            ? "bg-accent text-white"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                        }`}
+                        onClick={() => setTimeframe("h2")}
+                      >
+                        7D
+                      </button>
+                      <button
+                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                          timeframe === "h12"
+                            ? "bg-accent text-white"
+                            : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+                        }`}
+                        onClick={() => setTimeframe("h12")}
+                      >
+                        30D
+                      </button>
+                      <div className="ml-auto">
+                        <button
+                          onClick={() => fetchCryptoData()}
+                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-accent hover:bg-accent/10 rounded-full transition-colors duration-200"
+                          aria-label="Refresh data"
+                        >
+                          <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="w-full h-48 md:h-64">
+                      {cryptoData ? (
+                        <Line options={chartOptions} data={cryptoData} />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-gray-500 dark:text-gray-400">No chart data available</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-                {showInfo.maxSupply && additionalInfo.maxSupply && (
-                  <p className="text-sm text-text-secondary">{infoExplanations.maxSupply}</p>
-                )}
-              </div>
-            )}
-            
-          </div>
-          <div className="h-48 lg:h-full min-h-[200px]">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <RefreshCw size={40} className="animate-spin text-accent" />
-              </div>
-            ) : cryptoData ? (
-              <Line data={cryptoData} options={chartOptions} />
-            ) : (
-              <div className="flex items-center justify-center h-full text-text-secondary">No data available</div>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="bg-primary p-4 flex justify-center space-x-2">
-        {[
-          { label: "1D", value: "m30" },
-          { label: "1W", value: "h2" },
-          { label: "1M", value: "h12" },
-          { label: "1Y", value: "d1" },
-        ].map(({ label, value }) => (
-          <button
-            key={value}
-            onClick={() => setTimeframe(value)}
-            className={`px-3 py-1 rounded-lg text-sm ${
-              timeframe === value
-                ? "bg-accent text-white"
-                : "bg-secondary text-text-primary hover:bg-accent hover:text-white"
-            } transition duration-300 ease-in-out transform hover:scale-105`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
+
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="bg-white dark:bg-gray-750 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Market Cap</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {additionalInfo ? formatLargeNumber(additionalInfo.marketCap) : "N/A"}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-750 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Supply</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {additionalInfo ? formatSupply(additionalInfo.supply) : "N/A"}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-750 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Max Supply</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {additionalInfo && additionalInfo.maxSupply
+                          ? formatSupply(additionalInfo.maxSupply)
+                          : "Unlimited"}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-750 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Volume (24h)</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {additionalInfo ? formatLargeNumber(additionalInfo.volume) : "N/A"}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-750 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">VWAP (24h)</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">
+                        {additionalInfo && additionalInfo.vwap24Hr
+                          ? `$${additionalInfo.vwap24Hr.toFixed(2)}`
+                          : "N/A"}
+                      </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-750 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Change (24h)</div>
+                      <div className={`font-semibold ${
+                        additionalInfo && additionalInfo.changePercent24Hr >= 0
+                          ? "text-success"
+                          : "text-error"
+                      }`}>
+                        {additionalInfo
+                          ? `${additionalInfo.changePercent24Hr >= 0 ? "+" : ""}${additionalInfo.changePercent24Hr.toFixed(2)}%`
+                          : "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 

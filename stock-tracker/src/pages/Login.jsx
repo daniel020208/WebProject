@@ -1,139 +1,157 @@
+"use client"
+
 import { useState } from "react"
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth"
-import { auth, db } from "../config/firebase"
-import { useNavigate } from "react-router-dom"
-import { doc, setDoc } from "firebase/firestore"
-import Button from "../components/Button"
+import { Link, useNavigate } from "react-router-dom"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { auth } from "../config/firebase"
+import { FiMail, FiLock, FiUser } from "react-icons/fi"
 import FormInput from "../components/FormInput"
-import { Eye, EyeOff } from "lucide-react"
+import Button from "../components/Button"
+import { toast } from "react-toastify"
 
-
-
-function Login() {
+function Login({ enableGuestMode }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [displayName, setDisplayName] = useState("")
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [error, setError] = useState(null)
+  const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  
   const navigate = useNavigate()
-
-  const handleAuth = async (e) => {
+  
+  const validateForm = () => {
+    const newErrors = {}
+    if (!email.trim()) newErrors.email = "Email is required"
+    if (!password) newErrors.password = "Password is required"
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+  
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setError(null)
-    setIsLoading(true)
-
-    if (isSignUp && password !== confirmPassword) {
-      setError("Passwords don't match")
-      setIsLoading(false)
-      return
-    }
-
+    
+    if (!validateForm()) return
+    
     try {
-      if (isSignUp) {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-        const user = userCredential.user
-        await setDoc(doc(db, "users", user.uid), {
-          email,
-          displayName,
-          createdAt: new Date().toISOString(),
-        })
-      } else {
-        await signInWithEmailAndPassword(auth, email, password)
-      }
+      setIsLoading(true)
+      await signInWithEmailAndPassword(auth, email, password)
       navigate("/dashboard")
+      toast.success("Successfully logged in!")
     } catch (error) {
-      console.error("Error during authentication:", error)
-      setError(error.message)
+      console.error("Login error:", error)
+      let errorMessage = "Failed to login. Please try again."
+      
+      switch (error.code) {
+        case "auth/invalid-credential":
+          errorMessage = "Invalid email or password."
+          break
+        case "auth/user-disabled":
+          errorMessage = "This account has been disabled."
+          break
+        case "auth/too-many-requests":
+          errorMessage = "Too many failed login attempts. Please try again later."
+          break
+        default:
+          errorMessage = error.message || errorMessage
+      }
+      
+      toast.error(errorMessage)
+      setErrors({ general: errorMessage })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const togglePasswordVisibility = (field) => {
-    if (field === "password") {
-      setShowPassword(!showPassword)
-    } else if (field === "confirmPassword") {
-      setShowConfirmPassword(!showConfirmPassword)
+  const handleGuestMode = () => {
+    if (enableGuestMode) {
+      enableGuestMode()
+      navigate("/dashboard")
+      toast.success("Guest mode enabled. Your data won't be saved between sessions.")
     }
   }
-
+  
   return (
-    <div className="max-w-md mx-auto mt-8 p-6 bg-secondary rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center text-text-primary">{isSignUp ? "Sign Up" : "Log In"}</h2>
-      <form onSubmit={handleAuth} className="space-y-4">
-        {isSignUp && (
+    <div className="max-w-md mx-auto">
+      <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-8 border-2 border-accent/20">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome Back</h1>
+          <p className="text-gray-600 dark:text-gray-400">Enter your credentials to access your account</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
           <FormInput
-            type="text"
-            id="displayName"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            label="Display Name"
+            id="email"
+            name="email"
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            error={errors.email}
             required
           />
-        )}
-        <FormInput
-          type="email"
-          id="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          label="Email"
-          required
-        />
-        <div className="relative">
+          
           <FormInput
-            type={showPassword ? "text" : "password"}
             id="password"
+            name="password"
+            label="Password"
+            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            label="Password"
+            placeholder="Enter your password"
+            error={errors.password}
             required
           />
-          <button
-            type="button"
-            onClick={() => togglePasswordVisibility("password")}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-text-secondary"
-          >
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-          </button>
-        </div>
-        {isSignUp && (
-          <div className="relative">
-            <FormInput
-              type={showConfirmPassword ? "text" : "password"}
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              label="Confirm Password"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => togglePasswordVisibility("confirmPassword")}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-text-secondary"
-            >
-              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
+          
+          {errors.general && (
+            <div className="p-3 bg-error/10 border border-error/20 rounded-lg text-error text-sm">
+              {errors.general}
+            </div>
+          )}
+          
+          <div className="flex justify-between items-center text-sm">
+            <label className="flex items-center">
+              <input type="checkbox" className="form-checkbox h-4 w-4 text-accent rounded border-gray-300 focus:ring-accent" />
+              <span className="ml-2 text-gray-700 dark:text-gray-300">Remember me</span>
+            </label>
+            <Link to="/forgot-password" className="text-accent hover:underline">Forgot Password?</Link>
           </div>
-        )}
-        <Button type="submit" disabled={isLoading} className="w-full">
-          {isLoading ? "Processing..." : isSignUp ? "Sign Up" : "Log In"}
-        </Button>
-      </form>
-      {error && (
-        <p className="mt-4 text-error text-center" role="alert">
-          {error}
-        </p>
-      )}
-      <p className="mt-4 text-center text-text-secondary">
-        {isSignUp ? "Already have an account?" : "Don't have an account?"}
-        <button onClick={() => setIsSignUp(!isSignUp)} className="text-accent hover:underline ml-1">
-          {isSignUp ? "Log In" : "Sign Up"}
-        </button>
-      </p>
+          
+          <Button
+            type="submit"
+            variant="primary"
+            fullWidth
+            size="large"
+            disabled={isLoading}
+            animated
+          >
+            {isLoading ? "Logging in..." : "Login"}
+          </Button>
+        </form>
+        
+        <div className="mt-6">
+          <div className="relative flex items-center justify-center">
+            <div className="border-t border-gray-300 dark:border-gray-600 w-full"></div>
+            <div className="px-4 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800">or</div>
+            <div className="border-t border-gray-300 dark:border-gray-600 w-full"></div>
+          </div>
+          
+          <div className="mt-4 space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              fullWidth
+              onClick={handleGuestMode}
+              animated
+            >
+              Continue as Guest
+            </Button>
+            
+            <div className="text-center text-sm">
+              <span className="text-gray-600 dark:text-gray-400">Don't have an account?</span>
+              <Link to="/signup" className="ml-1 text-accent hover:underline">Sign up</Link>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,189 +1,354 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { Link } from "react-router-dom"
 import StockCard from "../components/StockCard"
-import CryptoCard from "../Components/CryptoCard"
+import CryptoCard from "../components/CryptoCard"
 import Button from "../components/Button"
-import Input from "../components/Input"
-import Label from "../components/Label"
-import Select from "../components/Select"
-import { collection, getDocs } from "firebase/firestore"
-import { db } from "../config/firebase"
+import FormInput from "../components/FormInput"
+import { FaSync, FaSearch, FaChartLine, FaBitcoin, FaSort, FaSortUp, FaSortDown, FaPlus } from "react-icons/fa"
+import { getStockQuote, getCryptoPrice } from "../utils/api"
+import { debounce } from "lodash"
+import { toast } from "react-toastify"
 
-const defaultStocks = [{ id: 1, name: "Microsoft", symbol: "MSFT", price: 300, change: 1.2, volume: 1000000 }]
-const defaultCryptos = [{ id: 1, name: "Bitcoin", symbol: "BTC", price: 45000, change: 2.5, volume: 500000 }]
+// Cache duration in milliseconds (5 minutes)
+const CACHE_DURATION = 5 * 60 * 1000
 
-function Dashboard({
-  stocks = defaultStocks,
-  cryptos = defaultCryptos,
-  onDeleteStock,
-  onDeleteCrypto,
-  user,
-  isAuthenticated,
-}) {
-  const [showStocks, setShowStocks] = useState(true)
+function Dashboard({ user, guestMode, stocks = [], cryptos = [], onDeleteStock, onDeleteCrypto }) {
+  const isAuthenticated = !!user || guestMode;
+  const [showStocks, setShowStocks] = useState(() => {
+    const saved = localStorage.getItem("showStocks")
+    return saved !== null ? JSON.parse(saved) : true
+  })
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortBy, setSortBy] = useState("name")
-  const [sortOrder, setSortOrder] = useState("asc")
+  const [sortBy, setSortBy] = useState(() => {
+    const saved = localStorage.getItem("sortBy")
+    return saved || "name"
+  })
+  const [sortOrder, setSortOrder] = useState(() => {
+    const saved = localStorage.getItem("sortOrder")
+    return saved || "asc"
+  })
   const [userStocks, setUserStocks] = useState(stocks)
   const [userCryptos, setUserCryptos] = useState(cryptos)
-  const [allUsers, setAllUsers] = useState([])
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [lastUpdateTime, setLastUpdateTime] = useState(null)
+  const [dataCache, setDataCache] = useState({})
 
+  // Save preferences to localStorage
+  useEffect(() => {
+    localStorage.setItem("showStocks", JSON.stringify(showStocks))
+    localStorage.setItem("sortBy", sortBy)
+    localStorage.setItem("sortOrder", sortOrder)
+  }, [showStocks, sortBy, sortOrder])
+
+  // Update data when stocks or cryptos change
   useEffect(() => {
     setUserStocks(stocks)
     setUserCryptos(cryptos)
   }, [stocks, cryptos])
 
-  useEffect(() => {
-    const fetchAllUsers = async () => {
-      if (user && user.role === "admin") {
-        const usersCollection = collection(db, "users")
-        const usersSnapshot = await getDocs(usersCollection)
-        const usersData = usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-        setAllUsers(usersData)
-      }
+  // Handle sorting
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+    } else {
+      setSortBy(field)
+      setSortOrder("asc")
     }
+  }
 
-    fetchAllUsers()
-  }, [user])
-
-  const filteredAndSortedItems = useMemo(() => {
-    const items = showStocks ? userStocks : userCryptos
-
-    const filteredItems = items.filter(
-      (item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.symbol.toLowerCase().includes(searchQuery.toLowerCase()),
-    )
-
-    return filteredItems.sort((a, b) => {
-      if (a.isCustom) return -1
-      if (b.isCustom) return 1
-
-      const aValue = a[sortBy]
-      const bValue = b[sortBy]
-      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1
-      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1
-      return 0
-    })
-  }, [showStocks, userStocks, userCryptos, searchQuery, sortBy, sortOrder])
-
-  if (user && user.role === "admin") {
-    return (
-      <div className="space-y-8">
-        <h1 className="text-4xl font-bold text-text-primary">Admin Dashboard</h1>
-        <div className="bg-secondary p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold mb-4 text-text-primary">User Management</h2>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className="text-left p-2">Name</th>
-                <th className="text-left p-2">Email</th>
-                <th className="text-left p-2">Role</th>
-                <th className="text-left p-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="p-2">{user.displayName}</td>
-                  <td className="p-2">{user.email}</td>
-                  <td className="p-2">{user.role}</td>
-                  <td className="p-2">
-                    <Button>View Activity</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  // Get sorting icon
+  const getSortIcon = (field) => {
+    if (sortBy !== field) return <FaSort className="text-gray-400 opacity-50" />
+    return sortOrder === "asc" ? (
+      <FaSortUp className="text-accent" />
+    ) : (
+      <FaSortDown className="text-accent" />
     )
   }
 
+  // Filter and sort data
+  const filteredAndSortedData = useMemo(() => {
+    const filterData = (data) => {
+      if (!data || !Array.isArray(data)) return [];
+      return data.filter((item) =>
+        item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.symbol?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    };
+
+    const sortData = (data) => {
+      if (!data || !Array.isArray(data)) return [];
+      return [...data].sort((a, b) => {
+        let valueA = a?.[sortBy];
+        let valueB = b?.[sortBy];
+
+        // Handle string comparison
+        if (typeof valueA === "string") {
+          valueA = valueA.toLowerCase();
+          valueB = (typeof valueB === "string") ? valueB.toLowerCase() : valueB;
+        }
+
+        // Handle undefined or null values
+        if (valueA === undefined || valueA === null) return 1;
+        if (valueB === undefined || valueB === null) return -1;
+
+        // Compare values
+        if (valueA < valueB) return sortOrder === "asc" ? -1 : 1;
+        if (valueA > valueB) return sortOrder === "asc" ? 1 : -1;
+        return 0;
+      });
+    };
+
+    return {
+      stocks: sortData(filterData(userStocks || [])),
+      cryptos: sortData(filterData(userCryptos || [])),
+    };
+  }, [userStocks, userCryptos, searchQuery, sortBy, sortOrder]);
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value)
+  }
+
+  // Update stock/crypto data
+  const updateAllData = async () => {
+    setIsUpdating(true)
+    const now = Date.now()
+    let updatedStocks = [...userStocks]
+    let updatedCryptos = [...userCryptos]
+    let updateCount = 0
+    let errorCount = 0
+
+    // Update stocks
+    for (let i = 0; i < updatedStocks.length; i++) {
+      const stock = updatedStocks[i]
+      
+      try {
+        // Check cache first
+        const cacheKey = `stock-${stock.symbol}`
+        const cachedData = dataCache[cacheKey]
+        
+        if (cachedData && now - cachedData.timestamp < CACHE_DURATION) {
+          updatedStocks[i] = { ...stock, ...cachedData.data }
+          continue
+        }
+        
+        const stockData = await getStockQuote(stock.symbol)
+        updatedStocks[i] = { ...stock, ...stockData }
+        
+        // Update cache
+        setDataCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data: stockData,
+            timestamp: now
+          }
+        }))
+        
+        updateCount++
+      } catch (error) {
+        console.error(`Error updating ${stock.symbol}:`, error)
+        errorCount++
+      }
+    }
+
+    // Update cryptos
+    for (let i = 0; i < updatedCryptos.length; i++) {
+      const crypto = updatedCryptos[i]
+      
+      try {
+        // Check cache first
+        const cacheKey = `crypto-${crypto.id}`
+        const cachedData = dataCache[cacheKey]
+        
+        if (cachedData && now - cachedData.timestamp < CACHE_DURATION) {
+          updatedCryptos[i] = { ...crypto, ...cachedData.data }
+          continue
+        }
+        
+        const cryptoData = await getCryptoPrice(crypto.id)
+        updatedCryptos[i] = { ...crypto, ...cryptoData }
+        
+        // Update cache
+        setDataCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            data: cryptoData,
+            timestamp: now
+          }
+        }))
+        
+        updateCount++
+      } catch (error) {
+        console.error(`Error updating ${crypto.symbol}:`, error)
+        errorCount++
+      }
+    }
+
+    setUserStocks(updatedStocks)
+    setUserCryptos(updatedCryptos)
+    setIsUpdating(false)
+    setLastUpdateTime(now)
+
+    if (errorCount > 0) {
+      toast.warning(`Updated ${updateCount} items with ${errorCount} errors`)
+    } else if (updateCount > 0) {
+      toast.success(`Successfully updated ${updateCount} items`)
+    } else {
+      toast.info("All data is already up to date")
+    }
+  }
+
+  const debouncedSearch = useCallback(debounce(handleSearchChange, 300), [])
+
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-4xl font-bold text-text-primary">Your {showStocks ? "Stock" : "Crypto"} Dashboard</h1>
-        <Link to="/add-stock">
-          <Button className="bg-accent hover:bg-accent-dark text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
-            Add New {showStocks ? "Stock" : "Crypto"}
-          </Button>
-        </Link>
-      </div>
-
-      {!isAuthenticated && (
-        <div className="bg-primary p-4 rounded-lg text-text-primary">
-          <p>You are currently using the app without an account. Sign up to save your data and access all features.</p>
-        </div>
-      )}
-
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
-        <div className="flex items-center space-x-2">
-          <Label htmlFor="show-stocks" className="text-text-primary">
-            Show:
-          </Label>
-          <Select
-            id="show-stocks"
-            value={showStocks ? "stocks" : "crypto"}
-            onChange={(e) => setShowStocks(e.target.value === "stocks")}
-          >
-            <option value="stocks">Stocks</option>
-            <option value="crypto">Cryptocurrencies</option>
-          </Select>
-        </div>
-
-        <div className="flex-1 max-w-sm">
-          <Input
-            type="text"
-            placeholder="Search by name or symbol"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
-          />
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Label htmlFor="sort-by" className="text-text-primary">
-            Sort by:
-          </Label>
-          <Select id="sort-by" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="name">Name</option>
-            <option value="symbol">Symbol</option>
-            <option value="price">Price</option>
-            <option value="change">Change %</option>
-            <option value="volume">Volume</option>
-          </Select>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Label htmlFor="sort-order" className="text-text-primary">
-            Order:
-          </Label>
-          <Select id="sort-order" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </Select>
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 border-2 border-accent/20">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h1>
+            {guestMode && (
+              <p className="text-sm text-amber-600 dark:text-amber-400 mb-1">
+                Guest Mode - Changes won't be saved
+              </p>
+            )}
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              {lastUpdateTime
+                ? `Last updated: ${new Date(lastUpdateTime).toLocaleTimeString()}`
+                : "Data has not been updated yet"}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button 
+              onClick={updateAllData} 
+              disabled={isUpdating}
+              variant="secondary"
+              icon={<FaSync className={`transition-transform ${isUpdating ? "animate-spin" : "hover:rotate-180"}`} />}
+            >
+              {isUpdating ? "Updating..." : "Update All"}
+            </Button>
+            <Link to="/add-stock">
+              <Button 
+                variant="primary" 
+                animated
+                icon={<FaPlus />}
+              >
+                Add Stock
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-8 grid-cols-1">
-        {filteredAndSortedItems.map((item) =>
-          showStocks ? (
-            <StockCard key={item.id} stock={item} onDelete={() => onDeleteStock(item.id)} className="w-full" />
-          ) : (
-            <CryptoCard key={item.id} crypto={item} onDelete={() => onDeleteCrypto(item.id)} className="w-full" />
-          ),
-        )}
-      </div>
+      {!isAuthenticated ? (
+        <div className="text-center p-10 bg-white dark:bg-gray-800 rounded-xl shadow-xl border-2 border-accent/20">
+          <div className="max-w-md mx-auto">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Welcome to Stock Tracker</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">Sign in to start managing your portfolio and track your investments in real-time.</p>
+            <div className="space-y-4">
+              <Link to="/login">
+                <Button variant="primary" size="large" animated fullWidth>Log In</Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                size="large" 
+                animated 
+                fullWidth
+                onClick={() => {
+                  if (window.enableGuestMode) window.enableGuestMode();
+                }}
+              >
+                Continue as Guest
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+            <div className="flex space-x-2">
+              <Button
+                onClick={() => setShowStocks(true)}
+                variant={showStocks ? "primary" : "secondary"}
+                icon={<FaChartLine />}
+                animated
+              >
+                Stocks
+              </Button>
+              <Button
+                onClick={() => setShowStocks(false)}
+                variant={!showStocks ? "primary" : "secondary"}
+                icon={<FaBitcoin />}
+                animated
+              >
+                Crypto
+              </Button>
+            </div>
+            <div className="w-full sm:w-64">
+              <FormInput
+                id="search"
+                name="search"
+                type="text"
+                placeholder="Search by name or symbol..."
+                onChange={debouncedSearch}
+              />
+            </div>
+          </div>
 
-      {filteredAndSortedItems.length === 0 && (
-        <p className="text-center text-text-secondary text-lg">
-          No {showStocks ? "stocks" : "cryptocurrencies"} found. Try adjusting your search or add some!
-        </p>
+          {/* No items message */}
+          {showStocks && filteredAndSortedData.stocks.length === 0 && (
+            <div className="text-center p-10 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+              <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No stocks in your portfolio</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">Add your first stock to start tracking its performance.</p>
+              <Link to="/add-stock">
+                <Button variant="primary" icon={<FaPlus />} animated>
+                  Add Your First Stock
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {!showStocks && filteredAndSortedData.cryptos.length === 0 && (
+            <div className="text-center p-10 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+              <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">No cryptocurrencies in your portfolio</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">Add your first cryptocurrency to start tracking its performance.</p>
+              <Link to="/add-stock">
+                <Button variant="primary" icon={<FaPlus />} animated>
+                  Add Your First Cryptocurrency
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* Stocks list */}
+          {showStocks && filteredAndSortedData.stocks.length > 0 && (
+            <div className="grid grid-cols-1 gap-6">
+              {filteredAndSortedData.stocks.map((stock) => (
+                <StockCard 
+                  key={stock.id} 
+                  stock={stock} 
+                  onDelete={onDeleteStock}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Cryptos list */}
+          {!showStocks && filteredAndSortedData.cryptos.length > 0 && (
+            <div className="grid grid-cols-1 gap-6">
+              {filteredAndSortedData.cryptos.map((crypto) => (
+                <CryptoCard 
+                  key={crypto.id} 
+                  crypto={crypto}
+                  onDelete={onDeleteCrypto}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
 }
 
 export default Dashboard
-

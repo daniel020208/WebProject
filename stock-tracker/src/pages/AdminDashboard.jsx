@@ -21,6 +21,14 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Alert,
+  Chip,
+  IconButton,
+  Tooltip,
 } from "@mui/material"
 import {
   BarChart,
@@ -28,11 +36,15 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts"
 import { createTheme, ThemeProvider } from "@mui/material/styles"
+import { Users, UserCheck, TrendingUp, Database, RefreshCw, Edit2, Trash2, Eye } from "lucide-react"
 
 const ADMIN_EMAIL = "daniel.golod2008@gmail.com"
 
@@ -41,14 +53,40 @@ const darkTheme = createTheme({
   palette: {
     mode: "dark",
     background: {
-      default: "#222",
-      paper: "#222",
+      default: "#1a1a1a",
+      paper: "#262626",
+    },
+    primary: {
+      main: "#8884d8",
+    },
+    secondary: {
+      main: "#82ca9d",
     },
     text: {
-      primary: "#fff",
+      primary: "#ffffff",
+      secondary: "#b3b3b3",
+    },
+  },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#262626",
+          borderRadius: "12px",
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: "8px",
+        },
+      },
     },
   },
 })
+
+const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042"]
 
 function AdminDashboard({ user }) {
   const [users, setUsers] = useState([])
@@ -58,87 +96,139 @@ function AdminDashboard({ user }) {
   const [selectedUser, setSelectedUser] = useState(null)
   const [editedRole, setEditedRole] = useState("")
   const [userStats, setUserStats] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
   const navigate = useNavigate()
 
+  const fetchUsers = async () => {
+    try {
+      setRefreshing(true)
+      const usersCollection = collection(db, "users")
+      const q = query(usersCollection, orderBy("createdAt", "desc"), limit(100))
+      const usersSnapshot = await getDocs(q)
+      const usersList = usersSnapshot.docs.map((docSnap) => {
+        const data = docSnap.data()
+        
+        // Helper function to format timestamp
+        const formatTimestamp = (timestamp) => {
+          if (!timestamp) return "N/A"
+          // Handle Firestore Timestamp
+          if (timestamp?.toDate instanceof Function) {
+            return timestamp.toDate().toLocaleString()
+          }
+          // Handle regular Date object
+          if (timestamp instanceof Date) {
+            return timestamp.toLocaleString()
+          }
+          // Handle timestamp in seconds or milliseconds
+          if (typeof timestamp === 'number') {
+            return new Date(timestamp * (timestamp < 1e12 ? 1000 : 1)).toLocaleString()
+          }
+          // Handle string timestamp
+          if (typeof timestamp === 'string') {
+            const date = new Date(timestamp)
+            return isNaN(date.getTime()) ? "N/A" : date.toLocaleString()
+          }
+          return "N/A"
+        }
+
+        // Helper function to check if user is active
+        const isUserActive = (lastLogin) => {
+          if (!lastLogin) return false
+          let loginDate
+          if (lastLogin?.toDate instanceof Function) {
+            loginDate = lastLogin.toDate()
+          } else if (lastLogin instanceof Date) {
+            loginDate = lastLogin
+          } else if (typeof lastLogin === 'number') {
+            loginDate = new Date(lastLogin * (lastLogin < 1e12 ? 1000 : 1))
+          } else if (typeof lastLogin === 'string') {
+            loginDate = new Date(lastLogin)
+          }
+          
+          if (!loginDate || isNaN(loginDate.getTime())) return false
+          return loginDate > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        }
+
+        return {
+          id: docSnap.id,
+          displayName: data.displayName || "N/A",
+          email: data.email || "N/A",
+          createdAt: formatTimestamp(data.createdAt),
+          lastLogin: formatTimestamp(data.lastLogin),
+          stocksCount: Array.isArray(data.stocks) ? data.stocks.length : 0,
+          cryptosCount: Array.isArray(data.cryptos) ? data.cryptos.length : 0,
+          role: data.role || "user",
+          status: isUserActive(data.lastLogin) ? "active" : "inactive",
+        }
+      })
+      
+      console.log("Processed users:", usersList)
+      setUsers(usersList)
+      calculateUserStats(usersList)
+    } catch (err) {
+      console.error("Error fetching users:", err)
+      setError(`Failed to fetch users: ${err.message}`)
+    } finally {
+      setRefreshing(false)
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    // Verify user is signed in and is admin.
     if (!user || user.email !== ADMIN_EMAIL) {
       navigate("/dashboard")
       return
     }
-
-    const fetchUsers = async () => {
-      try {
-        const usersCollection = collection(db, "users")
-        const q = query(usersCollection, orderBy("createdAt", "desc"), limit(100))
-        const usersSnapshot = await getDocs(q)
-        const usersList = usersSnapshot.docs.map((docSnap) => {
-          const data = docSnap.data()
-          const createdAt =
-            data.createdAt && data.createdAt.toDate
-              ? data.createdAt.toDate().toLocaleString()
-              : "N/A"
-          const lastLogin =
-            data.lastLogin && data.lastLogin.toDate
-              ? data.lastLogin.toDate().toLocaleString()
-              : "N/A"
-
-          if (createdAt === "N/A" || lastLogin === "N/A") {
-            console.warn(`User ${docSnap.id} is missing valid timestamp fields.`)
-          }
-          return {
-            id: docSnap.id, // DataGrid requires an "id" field
-            displayName: data.displayName || "N/A",
-            email: data.email || "N/A",
-            createdAt,
-            lastLogin,
-            stocksCount: data.stocks ? data.stocks.length : 0,
-            cryptosCount: data.cryptos ? data.cryptos.length : 0,
-            role: data.role || "user",
-          }
-        })
-        console.log("Fetched users:", usersList)
-        setUsers(usersList)
-        calculateUserStats(usersList)
-      } catch (err) {
-        console.error("Error fetching users:", err)
-        setError("Failed to fetch users")
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchUsers()
   }, [user, navigate])
 
   const calculateUserStats = (usersList) => {
-    if (usersList.length === 0) {
+    if (!usersList.length) {
       setUserStats(null)
       return
     }
-    const validUsers = usersList.filter(
-      (u) => u.lastLogin !== "N/A" && !isNaN(new Date(u.lastLogin))
-    )
+
     const totalUsers = usersList.length
-    const activeUsers = validUsers.filter(
-      (u) => new Date(u.lastLogin) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    ).length
-    const averageStocks = usersList.reduce((sum, u) => sum + u.stocksCount, 0) / totalUsers
-    const averageCryptos = usersList.reduce((sum, u) => sum + u.cryptosCount, 0) / totalUsers
+    const activeUsers = usersList.filter((u) => u.status === "active").length
+    const totalStocks = usersList.reduce((sum, u) => sum + u.stocksCount, 0)
+    const totalCryptos = usersList.reduce((sum, u) => sum + u.cryptosCount, 0)
 
     const stats = [
-      { name: "Total Users", value: totalUsers },
-      { name: "Active Users (30 days)", value: activeUsers },
-      { name: "Avg Stocks per User", value: averageStocks.toFixed(2) },
-      { name: "Avg Cryptos per User", value: averageCryptos.toFixed(2) },
+      {
+        title: "Total Users",
+        value: totalUsers,
+        icon: <Users className="w-6 h-6" />,
+        color: COLORS[0],
+      },
+      {
+        title: "Active Users",
+        value: activeUsers,
+        icon: <UserCheck className="w-6 h-6" />,
+        color: COLORS[1],
+      },
+      {
+        title: "Total Stocks",
+        value: totalStocks,
+        icon: <TrendingUp className="w-6 h-6" />,
+        color: COLORS[2],
+      },
+      {
+        title: "Total Cryptos",
+        value: totalCryptos,
+        icon: <Database className="w-6 h-6" />,
+        color: COLORS[3],
+      },
     ]
-    console.log("Calculated stats:", stats)
-    setUserStats(stats)
+
+    const pieData = [
+      { name: "Active Users", value: activeUsers },
+      { name: "Inactive Users", value: totalUsers - activeUsers },
+    ]
+
+    setUserStats({ stats, pieData })
   }
 
   const handleViewUser = (userId) => {
-    console.log("View user:", userId)
-    // Ensure your router has a route like: /profile/:id
     navigate(`/profile/${userId}`)
   }
 
@@ -149,128 +239,244 @@ function AdminDashboard({ user }) {
   }
 
   const handleSaveRole = async () => {
-    if (selectedUser && editedRole) {
-      try {
-        const userRef = doc(db, "users", selectedUser.id)
-        await updateDoc(userRef, { role: editedRole })
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.id === selectedUser.id ? { ...u, role: editedRole } : u
-          )
+    if (!selectedUser || !editedRole) return
+
+    try {
+      const userRef = doc(db, "users", selectedUser.id)
+      await updateDoc(userRef, { role: editedRole })
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === selectedUser.id ? { ...u, role: editedRole } : u
         )
-        setOpenDialog(false)
-      } catch (error) {
-        console.error("Error updating user role:", error)
-        setError("Failed to update user role")
-      }
+      )
+      setOpenDialog(false)
+    } catch (error) {
+      console.error("Error updating user role:", error)
+      setError("Failed to update user role")
     }
   }
 
   const handleDeleteUser = async (userId) => {
-    if (
-      window.confirm("Are you sure you want to delete this user? This action cannot be undone.")
-    ) {
-      try {
-        await deleteDoc(doc(db, "users", userId))
-        setUsers((prev) => prev.filter((u) => u.id !== userId))
-      } catch (error) {
-        console.error("Error deleting user:", error)
-        setError("Failed to delete user")
-      }
+    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      await deleteDoc(doc(db, "users", userId))
+      setUsers((prev) => prev.filter((u) => u.id !== userId))
+    } catch (error) {
+      console.error("Error deleting user:", error)
+      setError("Failed to delete user")
     }
   }
 
   const columns = [
-    { field: "displayName", headerName: "Name", width: 150 },
+    {
+      field: "displayName",
+      headerName: "Name",
+      width: 150,
+      renderCell: (params) => (
+        <div className="flex items-center gap-2">
+          <span>{params.value}</span>
+        </div>
+      ),
+    },
     { field: "email", headerName: "Email", width: 200 },
-    { field: "createdAt", headerName: "Created At", width: 200 },
-    { field: "lastLogin", headerName: "Last Login", width: 200 },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 120,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          color={params.value === "active" ? "success" : "default"}
+          size="small"
+        />
+      ),
+    },
     { field: "stocksCount", headerName: "Stocks", width: 100 },
     { field: "cryptosCount", headerName: "Cryptos", width: 100 },
     { field: "role", headerName: "Role", width: 100 },
     {
       field: "actions",
       headerName: "Actions",
-      width: 300,
+      width: 200,
       renderCell: (params) => (
-        <div>
-          <Button
-            className="bg-accent text-white px-2 py-1 rounded-md hover:bg-accent-dark transition duration-300 mr-2"
-            onClick={() => handleViewUser(params.row.id)}
-          >
-            View
-          </Button>
-          <Button
-            className="bg-secondary text-text-primary px-2 py-1 rounded-md hover:bg-primary transition duration-300 mr-2"
-            onClick={() => handleEditRole(params.row)}
-          >
-            Edit Role
-          </Button>
-          <Button
-            className="bg-error text-white px-2 py-1 rounded-md hover:bg-red-700 transition duration-300"
-            onClick={() => handleDeleteUser(params.row.id)}
-          >
-            Delete
-          </Button>
+        <div className="flex items-center gap-2">
+          <Tooltip title="View Profile">
+            <IconButton
+              size="small"
+              onClick={() => handleViewUser(params.row.id)}
+              className="text-blue-500 hover:text-blue-600"
+            >
+              <Eye className="w-5 h-5" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Edit Role">
+            <IconButton
+              size="small"
+              onClick={() => handleEditRole(params.row)}
+              className="text-yellow-500 hover:text-yellow-600"
+            >
+              <Edit2 className="w-5 h-5" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Delete User">
+            <IconButton
+              size="small"
+              onClick={() => handleDeleteUser(params.row.id)}
+              className="text-red-500 hover:text-red-600"
+            >
+              <Trash2 className="w-5 h-5" />
+            </IconButton>
+          </Tooltip>
         </div>
       ),
     },
   ]
 
   if (loading) {
-    return <div className="text-center text-text-primary p-6">Loading...</div>
-  }
-
-  if (error) {
-    return <div className="text-center text-error p-6">{error}</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <RefreshCw className="w-12 h-12 animate-spin text-accent" />
+      </div>
+    )
   }
 
   return (
     <ThemeProvider theme={darkTheme}>
-      <div className="p-6 max-w-7xl mx-auto bg-secondary rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold mb-6 text-text-primary">Admin Dashboard</h1>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <Button
+            onClick={fetchUsers}
+            disabled={refreshing}
+            className="flex items-center gap-2 bg-accent hover:bg-accent-dark text-white"
+          >
+            <RefreshCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh Data
+          </Button>
+        </div>
 
-        {userStats ? (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-text-primary">User Statistics</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={userStats}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="value" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="mb-8 text-text-primary">No user statistics available.</div>
+        {error && (
+          <Alert severity="error" className="mb-4">
+            {error}
+          </Alert>
         )}
 
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4 text-text-primary">User Management</h2>
-          <div style={{ height: 400, width: "100%" }}>
-            <DataGrid
-              rows={users}
-              columns={columns}
-              pageSize={5}
-              rowsPerPageOptions={[5, 10, 20]}
-              checkboxSelection
-              disableSelectionOnClick
-              sx={{
-                backgroundColor: darkTheme.palette.background.paper,
-                '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: "#1F1F1F",
-                  color: darkTheme.palette.text.primary,
-                },
-                '& .MuiDataGrid-cell': {
-                  color: darkTheme.palette.text.primary,
-                },
-              }}
-            />
+        {userStats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {userStats.stats.map((stat, index) => (
+              <Card key={stat.title} className="bg-secondary">
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Typography variant="h6" component="div" gutterBottom>
+                        {stat.title}
+                      </Typography>
+                      <Typography variant="h4" component="div">
+                        {stat.value}
+                      </Typography>
+                    </div>
+                    <div
+                      className="p-3 rounded-full"
+                      style={{ backgroundColor: `${stat.color}30` }}
+                    >
+                      {stat.icon}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {userStats && (
+            <>
+              <Card className="bg-secondary">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    User Activity
+                  </Typography>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={userStats.pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          paddingAngle={5}
+                          dataKey="value"
+                          label
+                        >
+                          {userStats.pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-secondary">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Asset Distribution
+                  </Typography>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          {
+                            name: "Stocks",
+                            value: userStats.stats[2].value,
+                          },
+                          {
+                            name: "Cryptos",
+                            value: userStats.stats[3].value,
+                          },
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <RechartsTooltip />
+                        <Legend />
+                        <Bar dataKey="value" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
+
+        <Card className="bg-secondary">
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              User Management
+            </Typography>
+            <div style={{ height: 400, width: "100%" }}>
+              <DataGrid
+                rows={users}
+                columns={columns}
+                pageSize={5}
+                rowsPerPageOptions={[5, 10, 20]}
+                checkboxSelection
+                disableSelectionOnClick
+                className="bg-secondary"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
           <DialogTitle>Edit User Role</DialogTitle>

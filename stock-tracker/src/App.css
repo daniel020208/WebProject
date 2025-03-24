@@ -2,37 +2,129 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* Modern UI Variables */
 :root {
   --sidebar-width: 60px;
   --sidebar-expanded-width: 200px;
+  --card-border-radius: 16px;
+  --button-border-radius: 12px;
+  --input-border-radius: 12px;
+  --transition-fast: 0.2s;
+  --transition-medium: 0.3s;
+  --transition-slow: 0.5s;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.1);
 }
 
+/* Global Styles */
 body {
-  @apply bg-background text-text-primary font-sans;
+  @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-white font-sans;
 }
 
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-600;
+}
+
+/* Layout Components */
 .app-container {
   @apply flex min-h-screen;
 }
 
 .main-content {
-  @apply flex-grow ml-[var(--sidebar-width)] p-8 transition-[margin-left] duration-300 ease-in-out;
+  @apply flex-grow ml-[var(--sidebar-width)] p-8 transition-all duration-300 ease-in-out;
 }
 
 .sidebar.open ~ .main-content {
   @apply ml-[var(--sidebar-expanded-width)];
 }
 
+/* Card Components */
 .card {
-  @apply bg-secondary border border-gray-700 rounded-lg overflow-hidden shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl;
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[var(--card-border-radius)] overflow-hidden shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
+.card:hover {
+  @apply shadow-xl;
+  transform: translateY(-2px) translateZ(0);
+}
+
+/* Form Elements */
 .input {
-  @apply w-full p-2 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none;
+  @apply w-full p-3 border rounded-[var(--input-border-radius)] bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition-all duration-200;
 }
 
 .btn {
-  @apply px-4 py-2 rounded-md font-semibold text-sm transition-all duration-200 ease-in-out;
+  @apply px-4 py-2 rounded-[var(--button-border-radius)] font-semibold text-sm transition-all duration-200 ease-in-out;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Hover effects */
+.hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-shadow {
+  transition: box-shadow 0.2s ease;
+}
+
+.hover-shadow:hover {
+  @apply shadow-xl;
+}
+
+/* Glass effect */
+.glass-effect {
+  @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-gray-200 dark:border-gray-700;
 }
 
 /* Custom button styles are now handled in the Button component */

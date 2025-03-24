@@ -1,118 +1,137 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import React, { useState, useRef, useEffect } from "react"
+import { HfInference } from "@huggingface/inference"
 import Button from "../components/Button"
 import FormInput from "../components/FormInput"
-import { collection, getDocs, query, where } from "firebase/firestore"
-import { db, auth } from "../config/firebase"
-import { generateText } from "ai"
-import { deepseek } from "@ai-sdk/deepseek"
+import { FaPaperPlane } from "react-icons/fa"
+
+const hf = new HfInference(import.meta.env.VITE_HUGGINGFACE_API_KEY || "")
+const MODEL_ID = "HuggingFaceH4/starchat-beta" // Free, good for financial conversations
 
 function AIAssistant() {
-  const [inputText, setInputText] = useState("")
-  const [conversation, setConversation] = useState([])
-  const [userStocks, setUserStocks] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const navigate = useNavigate()
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const chatEndRef = useRef(null)
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   useEffect(() => {
-    const fetchUserStocks = async () => {
-      const user = auth.currentUser
-      if (user) {
-        const userRef = collection(db, "users")
-        const q = query(userRef, where("uid", "==", user.uid))
-        const querySnapshot = await getDocs(q)
-        if (!querySnapshot.empty) {
-          const userData = querySnapshot.docs[0].data()
-          setUserStocks(userData.stocks || [])
-        }
-      }
-      setLoading(false)
-    }
+    scrollToBottom()
+  }, [messages])
 
-    fetchUserStocks()
-  }, [])
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
 
-  const handleGenerateText = async () => {
-    if (!inputText.trim()) return
-
-    const newMessage = { role: "user", content: inputText }
-    const updatedConversation = [...conversation, newMessage]
-
-    setConversation(updatedConversation)
-    setInputText("")
-    setGenerating(true)
+    const userMessage = input.trim()
+    setInput("")
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }])
+    setIsLoading(true)
 
     try {
-      const stockInfo = userStocks.map((stock) => `${stock.symbol}: ${stock.name}`).join(", ")
-      const prompt = `You are a financial advisor AI assistant. The user has the following stocks in their portfolio: ${stockInfo}. Please provide advice based on this context and the user's question. User's question: ${inputText}`
-
-      const { text } = await generateText({
-        model: deepseek("deepseek-reasoner"),
-        messages: [
-          { role: "system", content: "You are a helpful financial advisor AI." },
-          { role: "user", content: prompt },
-        ],
+      const response = await hf.textGeneration({
+        model: MODEL_ID,
+        inputs: `<|system|>You are a helpful AI assistant specializing in stock market analysis and financial advice. Always provide balanced, informative responses based on factual market knowledge.</s>
+<|user|>${userMessage}</s>
+<|assistant|>`,
+        parameters: {
+          max_new_tokens: 500,
+          temperature: 0.7,
+          top_p: 0.95,
+          repetition_penalty: 1.15,
+        },
       })
 
-      const botMessage = { role: "assistant", content: text.trim() }
-      setConversation([...updatedConversation, botMessage])
+      const assistantMessage = response.generated_text.split("<|assistant|>")[1].trim()
+      setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }])
     } catch (error) {
-      console.error("Error generating AI response:", error)
-      let errorMessage = "I'm sorry, I encountered an error. Please try again."
-      if (error.response) {
-        console.error("Error response:", error.response.data)
-        errorMessage += " Error details: " + JSON.stringify(error.response.data)
-      }
-      const botMessage = { role: "assistant", content: errorMessage }
-      setConversation([...updatedConversation, botMessage])
+      console.error("Error calling AI:", error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "I apologize, but I encountered an error. Please try again or check your connection.",
+        },
+      ])
     } finally {
-      setGenerating(false)
+      setIsLoading(false)
     }
-  }
-
-  if (loading) {
-    return <div className="text-center text-text-primary">Loading...</div>
-  }
-
-  if (!auth.currentUser) {
-    return (
-      <div className="p-6 max-w-2xl mx-auto bg-secondary rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-text-primary">AI Assistant</h2>
-        <p className="text-text-secondary mb-4">Please log in to use the AI Assistant.</p>
-        <Button onClick={() => navigate("/login")}>Log In</Button>
-      </div>
-    )
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto bg-secondary rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-text-primary">AI Assistant</h2>
-      <div className="mb-4 p-4 bg-primary rounded-md text-text-primary overflow-y-auto h-64">
-        {conversation.map((msg, index) => (
-          <div key={index} className={`mb-2 ${msg.role === "user" ? "text-accent" : "text-text-secondary"}`}>
-            <strong>{msg.role === "user" ? "You" : "Assistant"}:</strong> {msg.content}
-          </div>
-        ))}
-        {generating && <div className="text-text-secondary">AI is thinking...</div>}
+    <div className="flex flex-col h-[calc(100vh-2rem)] max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-md overflow-hidden">
+      <div className="p-6 bg-gray-700">
+        <h2 className="text-2xl font-bold text-white">AI Financial Assistant</h2>
+        <p className="text-gray-300 mt-2">
+          Ask me anything about stocks, market analysis, or financial advice. I'm here to help!
+        </p>
       </div>
-      <FormInput
-        type="text"
-        id="inputText"
-        name="inputText"
-        value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
-        label="Ask about your stocks or investment advice"
-        className="mb-4"
-      />
-      <Button className="bg-accent text-white" onClick={handleGenerateText} disabled={generating}>
-        {generating ? "Generating..." : "Send"}
-      </Button>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.length === 0 ? (
+          <div className="text-center text-gray-400 mt-8">
+            <p>No messages yet. Start by asking a question about stocks or financial markets!</p>
+          </div>
+        ) : (
+          messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-lg p-4 ${
+                  message.role === "user"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-700 text-white"
+                }`}
+              >
+                <p className="whitespace-pre-wrap">{message.content}</p>
+              </div>
+            </div>
+          ))
+        )}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded-lg p-4 bg-gray-700">
+              <div className="flex space-x-2">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-6 bg-gray-700">
+        <div className="flex space-x-4">
+          <FormInput
+            type="text"
+            id="inputText"
+            name="inputText"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about stocks, market analysis, or financial advice..."
+            disabled={isLoading}
+            className="flex-1"
+          />
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className={`px-6 py-2 ${
+              isLoading ? "bg-gray-500" : "bg-blue-500 hover:bg-blue-600"
+            } text-white rounded-lg flex items-center space-x-2 transition-colors`}
+          >
+            <FaPaperPlane className={`${isLoading ? "opacity-50" : ""}`} />
+            <span>{isLoading ? "Sending..." : "Send"}</span>
+          </Button>
+        </div>
+      </form>
     </div>
   )
 }
 
-export default AIAssistant
-
+export default AIAssistant;
