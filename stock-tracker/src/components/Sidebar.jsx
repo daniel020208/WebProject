@@ -8,10 +8,11 @@ import { auth } from "../config/firebase"
 import { FiHome, FiPlus, FiUser, FiLogOut, FiMenu, FiX, FiBarChart, FiMessageSquare, FiSettings, FiLogIn, FiUserPlus } from 'react-icons/fi'
 import Button from "../components/Button"
 import { FaChartLine } from "react-icons/fa"
+import { FaHome as FaHomeIcon, FaUser, FaSignInAlt, FaSignOutAlt, FaBitcoin } from 'react-icons/fa'
 
 const ADMIN_EMAIL = "daniel.golod2008@gmail.com"
 
-const Sidebar = ({ user, enableGuestMode, guestMode }) => {
+function Sidebar({ user, enableGuestMode, guestMode }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const location = useLocation()
@@ -30,7 +31,7 @@ const Sidebar = ({ user, enableGuestMode, guestMode }) => {
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  const isActive = (path) => {
+  function isActive(path) {
     return location.pathname === path
   }
 
@@ -53,7 +54,7 @@ const Sidebar = ({ user, enableGuestMode, guestMode }) => {
     {
       path: "/ai-assistant",
       name: "AI Assistant",
-      icon: <FiMessageSquare size={20} />,
+      icon: <FiUser size={20} />,
     },
   ]
 
@@ -65,11 +66,11 @@ const Sidebar = ({ user, enableGuestMode, guestMode }) => {
     })
   }
 
-  const toggleSidebar = () => {
+  function toggleSidebar() {
     setIsOpen(!isOpen)
   }
 
-  const handleSignOut = async () => {
+  async function handleSignOut() {
     try {
       await signOut(auth)
       navigate("/login")
@@ -78,20 +79,20 @@ const Sidebar = ({ user, enableGuestMode, guestMode }) => {
     }
   }
   
-  const handleGuestMode = () => {
+  function handleGuestMode() {
     if (enableGuestMode) {
       enableGuestMode()
       navigate("/dashboard")
     }
   }
 
-  const handleButtonClick = () => {
-    navigate('/desired-path'); // Replace with the correct path
-  };
+  function handleLoginClick() {
+    navigate('/login')
+  }
 
-  const handleSignupClick = () => {
-    navigate('/signup'); // Navigate to the sign-up page
-  };
+  function handleSignupClick() {
+    navigate('/signup')
+  }
 
   return (
     <>

@@ -1,21 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
 import { setDoc, doc } from "firebase/firestore"
 import { auth, db } from "../config/firebase"
 import { useNavigate, Link } from "react-router-dom"
 import Button from "../components/Button"
+import { toast } from 'react-toastify';
 
-function Signup() {
+const SignupPage = ({ enableGuestMode }) => {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [displayName, setDisplayName] = useState("")
   const [error, setError] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const navigate = useNavigate()
 
   const validateForm = () => {
@@ -89,108 +88,127 @@ function Signup() {
     }
   }
 
+  const handleGuestSignup = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create a user document in Firestore with the same ID as the Auth user
+      // Assuming you have a Firestore setup to save user data
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email,
+        displayName: "Guest User", // Default display name for guest users
+        role: "user", // Default role
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        stocks: [],
+        cryptos: [],
+      });
+
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Error during signup:", error);
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          setError("This email is already registered. Please login instead.");
+          break;
+        case "auth/invalid-email":
+          setError("Please enter a valid email address.");
+          break;
+        case "auth/weak-password":
+          setError("Please choose a stronger password.");
+          break;
+        default:
+          setError(`An error occurred during signup: ${error.message}`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto mt-8 p-6 bg-secondary rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center text-text-primary">Sign Up</h2>
-      <form onSubmit={handleSignUp} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block mb-2 text-sm font-medium text-text-primary">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            required
-            className="w-full p-2 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none"
-          />
+    <div className="max-w-md mx-auto">
+      <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-8 border-2 border-accent/20">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Create an Account</h1>
+          <p className="text-gray-600 dark:text-gray-400">Enter your details to sign up</p>
         </div>
-        <div>
-          <label htmlFor="password" className="block mb-2 text-sm font-medium text-text-primary">
-            Password
-          </label>
-          <input
-            type={showPassword ? "text" : "password"}
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password (min. 6 characters)"
-            required
-            className="w-full p-2 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none"
-          />
+        
+        <form onSubmit={handleSignUp} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300">Display Name</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-gray-700 text-white"
+              placeholder="Enter your display name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-gray-700 text-white"
+              placeholder="Enter your email"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-gray-700 text-white"
+              placeholder="Enter your password"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300">Confirm Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-gray-700 text-white"
+              placeholder="Confirm your password"
+            />
+          </div>
+          <Button onClick={handleSignUp} variant="primary" fullWidth disabled={isLoading}>
+            {isLoading ? "Signing Up..." : "Sign Up"}
+          </Button>
+        </form>
+        
+        <div className="mt-4">
+          <p className="text-sm text-gray-400">
+            Already have an account?{' '}
+            <Link to="/login" className="text-blue-500 hover:underline">Log In</Link>
+          </p>
+          <p className="text-sm text-gray-400">
+            Continue without signing up?{' '}
+            <Button
+              variant="outline"
+              fullWidth
+              onClick={() => {
+                if (window.enableGuestMode) window.enableGuestMode();
+                toast.success("Guest mode enabled. You can now use the app without signing up.");
+                navigate("/dashboard");
+              }}
+            >
+              Continue Without Signup
+            </Button>
+          </p>
         </div>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="showPassword"
-            checked={showPassword}
-            onChange={() => setShowPassword(!showPassword)}
-            className="mr-2"
-          />
-          <label htmlFor="showPassword" className="text-text-primary">
-            Show Password
-          </label>
-        </div>
-        <div>
-          <label htmlFor="confirmPassword" className="block mb-2 text-sm font-medium text-text-primary">
-            Confirm Password
-          </label>
-          <input
-            type={showConfirmPassword ? "text" : "password"}
-            id="confirmPassword"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm Password"
-            required
-            className="w-full p-2 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none"
-          />
-        </div>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="showConfirmPassword"
-            checked={showConfirmPassword}
-            onChange={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="mr-2"
-          />
-          <label htmlFor="showConfirmPassword" className="text-text-primary">
-            Show Confirm Password
-          </label>
-        </div>
-        <div>
-          <label htmlFor="displayName" className="block mb-2 text-sm font-medium text-text-primary">
-            Display Name <span className="text-error">*</span>
-          </label>
-          <input
-            type="text"
-            id="displayName"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Display Name"
-            required
-            className="w-full p-2 border rounded bg-primary text-text-primary border-gray-600 focus:border-accent focus:outline-none"
-          />
-        </div>
-        <Button type="submit" disabled={isLoading} className="w-full">
-          {isLoading ? "Signing Up..." : "Sign Up"}
-        </Button>
-      </form>
-      {error && (
-        <p className="mt-4 text-error text-center" role="alert">
-          {error}
-        </p>
-      )}
-      <p className="mt-4 text-center text-text-secondary">
-        Already have an account?{" "}
-        <Link to="/login" className="text-accent hover:underline">
-          Login
-        </Link>
-      </p>
+      </div>
     </div>
   )
 }
 
-export default Signup
+export default SignupPage
 
