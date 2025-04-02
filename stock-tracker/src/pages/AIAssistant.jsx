@@ -2,16 +2,51 @@ import React, { useState, useRef, useEffect } from "react"
 import { HfInference } from "@huggingface/inference"
 import Button from "../components/Button"
 import FormInput from "../components/FormInput"
-import { FaPaperPlane } from "react-icons/fa"
+import { FaPaperPlane, FaSave, FaHistory } from "react-icons/fa"
+import { doc, setDoc, getDoc, updateDoc, arrayUnion, Timestamp } from "firebase/firestore"
+import { db } from "../config/firebase"
 
 const hf = new HfInference(import.meta.env.VITE_HUGGINGFACE_API_KEY || "")
 const MODEL_ID = "HuggingFaceH4/starchat-beta" // Free, good for financial conversations
 
-function AIAssistant() {
+// Sample preset questions that users might ask
+const PRESET_QUESTIONS = [
+  "What stocks should I consider for long-term investment?",
+  "How do I analyze a company's financial health?",
+  "What's the difference between growth and value investing?",
+  "How does inflation affect the stock market?",
+  "Should I invest in ETFs or individual stocks?",
+]
+
+function AIAssistant({ user }) {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const [showHistory, setShowHistory] = useState(false)
+  const [savedConversations, setSavedConversations] = useState([])
   const chatEndRef = useRef(null)
+
+  // Load conversation history for logged-in users
+  useEffect(() => {
+    const loadUserConversations = async () => {
+      if (!user) return
+      
+      try {
+        const userDocRef = doc(db, "users", user.uid)
+        const userDoc = await getDoc(userDocRef)
+        
+        if (userDoc.exists() && userDoc.data().aiConversations) {
+          setSavedConversations(userDoc.data().aiConversations)
+        }
+      } catch (err) {
+        console.error("Error loading conversation history:", err)
+      }
+    }
+    
+    loadUserConversations()
+  }, [user])
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -29,8 +64,14 @@ function AIAssistant() {
     setInput("")
     setMessages((prev) => [...prev, { role: "user", content: userMessage }])
     setIsLoading(true)
+    setError(null)
 
     try {
+      // If we've already tried 3 times, show a more descriptive error
+      if (retryCount >= 3) {
+        throw new Error("Maximum retry attempts reached. The AI service might be experiencing issues.")
+      }
+
       const response = await hf.textGeneration({
         model: MODEL_ID,
         inputs: `<|system|>You are a helpful AI assistant specializing in stock market analysis and financial advice. Always provide balanced, informative responses based on factual market knowledge.</s>
@@ -46,8 +87,10 @@ function AIAssistant() {
 
       const assistantMessage = response.generated_text.split("<|assistant|>")[1].trim()
       setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }])
+      setRetryCount(0) // Reset retry count on success
     } catch (error) {
       console.error("Error calling AI:", error)
+      setError(error.message || "An error occurred while generating a response")
       setMessages((prev) => [
         ...prev,
         {
@@ -55,24 +98,128 @@ function AIAssistant() {
           content: "I apologize, but I encountered an error. Please try again or check your connection.",
         },
       ])
+      setRetryCount((prev) => prev + 1)
     } finally {
       setIsLoading(false)
     }
   }
 
+  const handlePresetQuestion = (question) => {
+    setInput(question)
+  }
+
+  const saveConversation = async () => {
+    if (!user || messages.length === 0) return
+    
+    try {
+      const userDocRef = doc(db, "users", user.uid)
+      const userDoc = await getDoc(userDocRef)
+      
+      const newConversation = {
+        id: Date.now().toString(),
+        timestamp: Timestamp.now(),
+        messages: messages,
+        title: messages[0]?.content.slice(0, 50) + "..." || "Conversation"
+      }
+      
+      if (userDoc.exists()) {
+        await updateDoc(userDocRef, {
+          aiConversations: arrayUnion(newConversation)
+        })
+      } else {
+        await setDoc(userDocRef, {
+          aiConversations: [newConversation]
+        })
+      }
+      
+      setSavedConversations((prev) => [...prev, newConversation])
+      alert("Conversation saved successfully!")
+    } catch (err) {
+      console.error("Error saving conversation:", err)
+      alert("Failed to save conversation. Please try again.")
+    }
+  }
+
+  const loadConversation = (conversation) => {
+    setMessages(conversation.messages)
+    setShowHistory(false)
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)] max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-md overflow-hidden">
-      <div className="p-6 bg-gray-700">
-        <h2 className="text-2xl font-bold text-white">AI Financial Assistant</h2>
-        <p className="text-gray-300 mt-2">
-          Ask me anything about stocks, market analysis, or financial advice. I'm here to help!
-        </p>
+      <div className="p-6 bg-gray-700 flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-white">AI Financial Assistant</h2>
+          <p className="text-gray-300 mt-2">
+            Ask me anything about stocks, market analysis, or financial advice. I'm here to help!
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          {user && (
+            <>
+              <Button 
+                onClick={() => saveConversation()} 
+                disabled={messages.length === 0}
+                className="p-2 bg-blue-500 hover:bg-blue-600 rounded-lg"
+                title="Save conversation"
+              >
+                <FaSave size={18} />
+              </Button>
+              <Button 
+                onClick={() => setShowHistory(!showHistory)} 
+                className="p-2 bg-blue-500 hover:bg-blue-600 rounded-lg"
+                title="View saved conversations"
+              >
+                <FaHistory size={18} />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
+      {showHistory && savedConversations.length > 0 && (
+        <div className="bg-gray-900 p-4 border-b border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-2">Your Saved Conversations</h3>
+          <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
+            {savedConversations.map((convo) => (
+              <Button 
+                key={convo.id}
+                onClick={() => loadConversation(convo)}
+                className="text-left p-2 bg-gray-800 hover:bg-gray-700 rounded"
+              >
+                <p className="text-sm text-white truncate">{convo.title}</p>
+                <p className="text-xs text-gray-400">
+                  {new Date(convo.timestamp.toDate()).toLocaleString()}
+                </p>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Preset questions */}
+      {messages.length === 0 && (
+        <div className="bg-gray-900 p-4 border-b border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-2">Suggested Questions</h3>
+          <div className="flex flex-wrap gap-2">
+            {PRESET_QUESTIONS.map((question, index) => (
+              <Button 
+                key={index}
+                onClick={() => handlePresetQuestion(question)}
+                className="text-sm p-2 bg-gray-800 hover:bg-gray-700 rounded"
+              >
+                {question}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.length === 0 ? (
           <div className="text-center text-gray-400 mt-8">
             <p>No messages yet. Start by asking a question about stocks or financial markets!</p>
+            <p className="mt-2 text-sm">Or try one of the suggested questions above.</p>
           </div>
         ) : (
           messages.map((message, index) => (
@@ -100,6 +247,14 @@ function AIAssistant() {
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
               </div>
+            </div>
+          </div>
+        )}
+        {error && (
+          <div className="flex justify-center">
+            <div className="max-w-[80%] rounded-lg p-4 bg-red-600/20 text-red-200 text-sm">
+              <p>Error: {error}</p>
+              <p className="mt-1">Please try again or refresh the page if the problem persists.</p>
             </div>
           </div>
         )}

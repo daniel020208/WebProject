@@ -192,7 +192,47 @@ const createAxiosInstance = (baseURL, params = {}) => {
 }
 
 const fmpApi = createAxiosInstance(FMP_BASE_URL, { apikey: FMP_API_KEY })
-const coingeckoApi = createAxiosInstance(COINGECKO_BASE_URL)
+const coingeckoApi = createAxiosInstance(COINGECKO_BASE_URL, {})
+
+// Add headers for CoinGecko API
+if (COINGECKO_API_KEY) {
+  coingeckoApi.defaults.headers.common['x-cg-pro-api-key'] = COINGECKO_API_KEY;
+}
+
+// Map of common crypto symbols to their CoinGecko IDs
+const cryptoIdMap = {
+  'btc': 'bitcoin',
+  'eth': 'ethereum',
+  'usdt': 'tether',
+  'usdc': 'usd-coin',
+  'bnb': 'binancecoin',
+  'xrp': 'ripple',
+  'sol': 'solana',
+  'ada': 'cardano',
+  'doge': 'dogecoin',
+  'trx': 'tron',
+  'link': 'chainlink',
+  'matic': 'matic-network',
+  'dot': 'polkadot',
+  'ltc': 'litecoin',
+  'avax': 'avalanche-2',
+  'shib': 'shiba-inu',
+  'uni': 'uniswap',
+  'atom': 'cosmos',
+  'xlm': 'stellar',
+  'etc': 'ethereum-classic'
+};
+
+// Helper function to get the correct CoinGecko ID from a symbol
+const getCoinGeckoId = (symbol) => {
+  // If it's already using the full format, return as is
+  if (symbol.includes('-') || symbol.length > 5) {
+    return symbol.toLowerCase();
+  }
+  
+  // Check the mapping
+  return cryptoIdMap[symbol.toLowerCase()] || symbol.toLowerCase();
+};
 
 // Helper function to validate API response
 const validateResponse = (response, errorMessage) => {
@@ -342,17 +382,65 @@ export const getCryptoPrice = async (id) => {
 
 export const getCryptoHistory = async (id, days) => {
   try {
-    const response = await coingeckoApi.get(`/coins/${id}/market_chart`, {
-      params: {
-        vs_currency: "usd",
-        days,
-        interval: days > 90 ? "daily" : "hourly",
-      },
-    })
-    return validateResponse(response, "Historical data not found")
+    // Get the correct CoinGecko ID
+    const coinId = getCoinGeckoId(id);
+    console.log(`Getting crypto history for ID: ${coinId} (original: ${id})`);
+    
+    // Check if the API rate limit has been reached
+    if (apiStats.rateLimitReached) {
+      throw new Error("API rate limit reached. Please try again later.");
+    }
+    
+    // Check cache first
+    const cacheKey = `crypto-history-${coinId}-${days}`;
+    const cachedData = apiCache.get('crypto', cacheKey, 60); // 60 minute cache
+    if (cachedData) {
+      return cachedData;
+    }
+    
+    // Set up request parameters
+    const params = {
+      vs_currency: "usd",
+      days: days,
+      interval: days > 90 ? "daily" : "hourly",
+    };
+    
+    // Log the URL being requested for debugging
+    console.log(`Requesting: ${COINGECKO_BASE_URL}/coins/${coinId}/market_chart with params:`, params);
+    
+    const response = await coingeckoApi.get(`/coins/${coinId}/market_chart`, { params });
+    
+    const data = validateResponse(response, "Historical data not found");
+    
+    // Cache the result
+    apiCache.set('crypto', cacheKey, data);
+    return data;
   } catch (error) {
-    console.error("Error fetching crypto history:", error)
-    throw error
+    // Handle API errors specifically
+    if (error.response) {
+      console.error(`CoinGecko API error (${error.response.status}):`, error.response.data);
+      
+      if (error.response.status === 401) {
+        throw new Error("Unauthorized: CoinGecko API key invalid or not provided");
+      }
+      else if (error.response.status === 429) {
+        console.error("Rate limit exceeded for CoinGecko API");
+        apiStats.rateLimitReached = true;
+        apiStats.rateLimitTimestamp = new Date();
+        throw new Error("CoinGecko API rate limit exceeded. Please try again later.");
+      }
+      else if (error.response.status === 400) {
+        throw new Error("Bad request to CoinGecko API. Invalid parameters or coin ID.");
+      }
+    }
+    
+    // For CORS errors or other network errors
+    if (error.message === 'Network Error') {
+      throw new Error("Network error connecting to CoinGecko API. Please check your connection.");
+    }
+    
+    console.error("Error fetching crypto history:", error);
+    throw error;
   }
 }
 

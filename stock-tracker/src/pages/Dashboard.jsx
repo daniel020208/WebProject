@@ -12,8 +12,8 @@ import { toast } from "react-toastify"
 // Cache duration in milliseconds (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000
 
-function Dashboard({ user, guestMode, stocks = [], cryptos = [], onDeleteStock, onDeleteCrypto }) {
-  const isAuthenticated = !!user || guestMode;
+function Dashboard({ user, stocks = [], cryptos = [], onDeleteStock, onDeleteCrypto }) {
+  const isAuthenticated = !!user;
   const [showStocks, setShowStocks] = useState(() => {
     const saved = localStorage.getItem("showStocks")
     return saved !== null ? JSON.parse(saved) : true
@@ -35,10 +35,12 @@ function Dashboard({ user, guestMode, stocks = [], cryptos = [], onDeleteStock, 
 
   // Save preferences to localStorage
   useEffect(() => {
-    localStorage.setItem("showStocks", JSON.stringify(showStocks))
-    localStorage.setItem("sortBy", sortBy)
-    localStorage.setItem("sortOrder", sortOrder)
-  }, [showStocks, sortBy, sortOrder])
+    if (isAuthenticated) {
+      localStorage.setItem("showStocks", JSON.stringify(showStocks))
+      localStorage.setItem("sortBy", sortBy)
+      localStorage.setItem("sortOrder", sortOrder)
+    }
+  }, [showStocks, sortBy, sortOrder, isAuthenticated])
 
   // Update data when stocks or cryptos change
   useEffect(() => {
@@ -207,9 +209,9 @@ function Dashboard({ user, guestMode, stocks = [], cryptos = [], onDeleteStock, 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Dashboard</h1>
-            {guestMode && (
+            {!isAuthenticated && (
               <p className="text-sm text-amber-600 dark:text-amber-400 mb-1">
-                Guest Mode - Changes won't be saved
+                Note: Log in to save your portfolio and changes
               </p>
             )}
             <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -249,17 +251,16 @@ function Dashboard({ user, guestMode, stocks = [], cryptos = [], onDeleteStock, 
               <Link to="/login">
                 <Button variant="primary" size="large" animated fullWidth>Log In</Button>
               </Link>
-              <Button 
-                variant="outline" 
-                size="large" 
-                animated 
-                fullWidth
-                onClick={() => {
-                  if (window.enableGuestMode) window.enableGuestMode();
-                }}
-              >
-                Continue as Guest
-              </Button>
+              <Link to="/signup">
+                <Button 
+                  variant="outline" 
+                  size="large" 
+                  animated 
+                  fullWidth
+                >
+                  Sign Up
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

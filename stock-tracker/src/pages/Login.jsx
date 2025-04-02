@@ -9,7 +9,7 @@ import FormInput from "../components/FormInput"
 import Button from "../components/Button"
 import { toast } from "react-toastify"
 
-function Login({ enableGuestMode }) {
+function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errors, setErrors] = useState({})
@@ -59,14 +59,6 @@ function Login({ enableGuestMode }) {
       setIsLoading(false)
     }
   }
-
-  const handleGuestMode = () => {
-    if (enableGuestMode) {
-      enableGuestMode()
-      navigate("/dashboard")
-      toast.success("Guest mode enabled. Your data won't be saved between sessions.")
-    }
-  }
   
   return (
     <div className="max-w-md mx-auto">
@@ -86,6 +78,7 @@ function Login({ enableGuestMode }) {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
             error={errors.email}
+            icon={<FiMail size={18} className="text-gray-400" />}
             required
           />
           
@@ -98,6 +91,7 @@ function Login({ enableGuestMode }) {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
             error={errors.password}
+            icon={<FiLock size={18} className="text-gray-400" />}
             required
           />
           
@@ -108,7 +102,7 @@ function Login({ enableGuestMode }) {
           )}
           
           <div className="flex justify-between items-center text-sm">
-            <label className="flex items-center">
+            <label className="flex items-center cursor-pointer">
               <input type="checkbox" className="form-checkbox h-4 w-4 text-accent rounded border-gray-300 focus:ring-accent" />
               <span className="ml-2 text-gray-700 dark:text-gray-300">Remember me</span>
             </label>
@@ -127,28 +121,10 @@ function Login({ enableGuestMode }) {
           </Button>
         </form>
         
-        <div className="mt-6">
-          <div className="relative flex items-center justify-center">
-            <div className="border-t border-gray-300 dark:border-gray-600 w-full"></div>
-            <div className="px-4 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800">or</div>
-            <div className="border-t border-gray-300 dark:border-gray-600 w-full"></div>
-          </div>
-          
-          <div className="mt-4 space-y-3">
-            <Button
-              type="button"
-              variant="outline"
-              fullWidth
-              onClick={handleGuestMode}
-              animated
-            >
-              Continue as Guest
-            </Button>
-            
-            <div className="text-center text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Don't have an account?</span>
-              <Link to="/signup" className="ml-1 text-accent hover:underline">Sign up</Link>
-            </div>
+        <div className="mt-6 text-center">
+          <div className="text-sm">
+            <span className="text-gray-600 dark:text-gray-400">Don't have an account?</span>
+            <Link to="/signup" className="ml-1 text-accent hover:underline">Sign up</Link>
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ import { FiEye, FiEyeOff } from 'react-icons/fi';
  * @param {boolean} [props.required=false] - Whether the field is required
  * @param {boolean} [props.disabled=false] - Whether the field is disabled
  * @param {string} [props.className=''] - Additional classes
+ * @param {ReactNode} [props.icon] - Icon to display in the input
  */
 const FormInput = ({
   id,
@@ -34,6 +35,7 @@ const FormInput = ({
   required = false,
   disabled = false,
   className = '',
+  icon = null,
   ...rest
 }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -58,6 +60,12 @@ const FormInput = ({
       )}
       
       <div className="relative">
+        {icon && (
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">
+            {icon}
+          </div>
+        )}
+        
         {type === 'textarea' ? (
           <textarea
             id={id}
@@ -72,7 +80,7 @@ const FormInput = ({
             placeholder={placeholder}
             disabled={disabled}
             className={`
-              w-full px-4 py-2 rounded-md 
+              w-full ${icon ? 'pl-10' : 'px-4'} py-2 rounded-md 
               bg-white dark:bg-gray-800 
               border ${error ? 'border-error' : isFocused ? 'border-accent' : 'border-gray-300 dark:border-gray-600'} 
               text-gray-900 dark:text-white
@@ -100,7 +108,7 @@ const FormInput = ({
             placeholder={placeholder}
             disabled={disabled}
             className={`
-              w-full px-4 py-2 rounded-md 
+              w-full ${icon ? 'pl-10' : 'px-4'} py-2 rounded-md 
               bg-white dark:bg-gray-800 
               border ${error ? 'border-error' : isFocused ? 'border-accent' : 'border-gray-300 dark:border-gray-600'} 
               text-gray-900 dark:text-white

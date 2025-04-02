@@ -12,12 +12,12 @@ import { FaHome as FaHomeIcon, FaUser, FaSignInAlt, FaSignOutAlt, FaBitcoin } fr
 
 const ADMIN_EMAIL = "daniel.golod2008@gmail.com"
 
-function Sidebar({ user, enableGuestMode, guestMode }) {
+function Sidebar({ user }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const location = useLocation()
   const navigate = useNavigate()
-  const isAuthenticated = !!user || guestMode
+  const isAuthenticated = !!user
 
   useEffect(() => {
     const handleResize = () => {
@@ -78,13 +78,6 @@ function Sidebar({ user, enableGuestMode, guestMode }) {
       console.error("Error signing out:", error)
     }
   }
-  
-  function handleGuestMode() {
-    if (enableGuestMode) {
-      enableGuestMode()
-      navigate("/dashboard")
-    }
-  }
 
   function handleLoginClick() {
     navigate('/login')
@@ -121,8 +114,8 @@ function Sidebar({ user, enableGuestMode, guestMode }) {
         onMouseLeave={() => !isMobile && setIsOpen(false)}
       >
         <div className="flex flex-col h-full">
-          <div className="flex justify-center items-center h-16 border-b border-gray-200 dark:border-gray-700">
-            <h1 className={`font-bold text-accent transition-opacity duration-200 ${isOpen ? "text-xl opacity-100" : "text-xl opacity-0"}`}>
+          <div className="flex justify-center items-center h-16 border-b border-gray-200 dark:border-gray-700 relative">
+            <h1 className={`font-bold text-accent transition-opacity duration-200 ${isOpen ? "text-xl opacity-100" : "text-xl opacity-0 absolute"}`}>
               StockTracker
             </h1>
             <span className={`text-2xl font-bold text-accent transition-opacity duration-200 ${isOpen ? "opacity-0 absolute" : "opacity-100"}`}>
@@ -143,8 +136,8 @@ function Sidebar({ user, enableGuestMode, guestMode }) {
                     }`}
                     onClick={() => isMobile && setIsOpen(false)}
                   >
-                    <span className={`${isActive(item.path) ? "text-accent" : ""}`}>{item.icon}</span>
-                    <span className={`ml-4 transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
+                    <span className={`flex-shrink-0 ${isActive(item.path) ? "text-accent" : ""}`}>{item.icon}</span>
+                    <span className={`ml-4 transition-all duration-200 whitespace-nowrap overflow-hidden ${isOpen ? "opacity-100 max-w-xs" : "opacity-0 max-w-0"}`}>
                       {item.name}
                     </span>
                   </Link>
@@ -165,8 +158,8 @@ function Sidebar({ user, enableGuestMode, guestMode }) {
                   }`}
                   onClick={() => isMobile && setIsOpen(false)}
                 >
-                  <FiUser size={20} />
-                  <span className={`ml-4 transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
+                  <FiUser size={20} className="flex-shrink-0" />
+                  <span className={`ml-4 transition-all duration-200 whitespace-nowrap overflow-hidden ${isOpen ? "opacity-100 max-w-xs" : "opacity-0 max-w-0"}`}>
                     Profile
                   </span>
                 </Link>
@@ -175,29 +168,11 @@ function Sidebar({ user, enableGuestMode, guestMode }) {
                   onClick={handleSignOut}
                   className="flex items-center w-full px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 transition-all duration-200"
                 >
-                  <FiLogOut size={20} />
-                  <span className={`ml-4 transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
+                  <FiLogOut size={20} className="flex-shrink-0" />
+                  <span className={`ml-4 transition-all duration-200 whitespace-nowrap overflow-hidden ${isOpen ? "opacity-100 max-w-xs" : "opacity-0 max-w-0"}`}>
                     Sign Out
                   </span>
                 </button>
-              </>
-            ) : guestMode ? (
-              <>
-                <div className="px-4 py-3 mb-2 text-sm text-gray-600 dark:text-gray-400">
-                  <span className={`transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
-                    Guest Mode
-                  </span>
-                </div>
-                <Link
-                  to="/login"
-                  className="flex items-center px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
-                  onClick={() => isMobile && setIsOpen(false)}
-                >
-                  <FiUserPlus size={20} />
-                  <span className={`ml-4 transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
-                    Sign Up
-                  </span>
-                </Link>
               </>
             ) : (
               <>
@@ -206,33 +181,22 @@ function Sidebar({ user, enableGuestMode, guestMode }) {
                   className="flex items-center px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
                   onClick={() => isMobile && setIsOpen(false)}
                 >
-                  <FiLogIn size={20} />
-                  <span className={`ml-4 transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
+                  <FiLogIn size={20} className="flex-shrink-0" />
+                  <span className={`ml-4 transition-all duration-200 whitespace-nowrap overflow-hidden ${isOpen ? "opacity-100 max-w-xs" : "opacity-0 max-w-0"}`}>
                     Log In
                   </span>
                 </Link>
 
-                <button
-                  onClick={handleGuestMode}
-                  className="flex items-center w-full px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-accent/10 dark:hover:bg-accent/10 hover:text-accent dark:hover:text-accent transition-all duration-200"
+                <Link
+                  to="/signup"
+                  className="flex items-center px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                  onClick={() => isMobile && setIsOpen(false)}
                 >
-                  <FiUser size={20} />
-                  <span className={`ml-4 transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
-                    Guest Mode
+                  <FiUserPlus size={20} className="flex-shrink-0" />
+                  <span className={`ml-4 transition-all duration-200 whitespace-nowrap overflow-hidden ${isOpen ? "opacity-100 max-w-xs" : "opacity-0 max-w-0"}`}>
+                    Sign Up
                   </span>
-                </button>
-
-                {!isAuthenticated && (
-                  <button
-                    onClick={handleSignupClick}
-                    className="flex items-center w-full px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-accent/10 dark:hover:bg-accent/10 hover:text-accent dark:hover:text-accent transition-all duration-200"
-                  >
-                    <FiUserPlus size={20} />
-                    <span className={`ml-4 transition-opacity duration-200 ${isOpen ? "opacity-100" : "opacity-0"}`}>
-                      Sign Up
-                    </span>
-                  </button>
-                )}
+                </Link>
               </>
             )}
           </div>

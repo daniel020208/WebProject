@@ -29,20 +29,7 @@ function App() {
   const [stocks, setStocks] = useState(defaultStocks)
   const [cryptos, setCryptos] = useState(defaultCryptos)
   const [loading, setLoading] = useState(true)
-  const [guestMode, setGuestMode] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
-
-  // Make enableGuestMode available globally
-  useEffect(() => {
-    window.enableGuestMode = () => {
-      setGuestMode(true)
-      setStocks(defaultStocks)
-      setCryptos(defaultCryptos)
-    }
-    return () => {
-      delete window.enableGuestMode
-    }
-  }, [])
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -83,13 +70,15 @@ function App() {
         } catch (error) {
           console.error("Error setting up user:", error)
         }
-        setGuestMode(false)
-      } else if (guestMode) {
-        // Keep default stocks and cryptos for guest mode
       } else {
-        // Reset to defaults when not logged in and not in guest mode
+        // Use default stocks and cryptos when not logged in
         setStocks(defaultStocks)
         setCryptos(defaultCryptos)
+        
+        // Clear comparison-related localStorage items when not logged in
+        localStorage.removeItem('compareSelectedStocks');
+        localStorage.removeItem('compareTimeframe');
+        localStorage.removeItem('compareMetric');
       }
       setUser(user)
       setLoading(false)
@@ -97,7 +86,7 @@ function App() {
     })
 
     return () => unsubscribe()
-  }, [guestMode])
+  }, [])
 
   // Initialize theme based on user preference or system settings
   useEffect(() => {
@@ -210,12 +199,6 @@ function App() {
     }
   }
 
-  const enableGuestMode = () => {
-    setGuestMode(true)
-    setStocks(defaultStocks)
-    setCryptos(defaultCryptos)
-  }
-
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-white dark:bg-gray-900 z-50">
@@ -230,17 +213,17 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app-container bg-white dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen transition-colors duration-300">
-        <Sidebar user={user} enableGuestMode={enableGuestMode} guestMode={guestMode} />
+        <Sidebar user={user} />
         
-        <main className={`main-content transition-all duration-300 ${user || guestMode ? 'with-sidebar' : 'p-6'}`}>
+        <main className={`main-content transition-all duration-300 ${user ? 'with-sidebar' : 'p-6'}`}>
           <div className="flex justify-end mb-4">
             <ThemeToggle />
           </div>
           
           {authChecked && (
             <Routes>
-              <Route path="/login" element={(user || guestMode) ? <Navigate to="/dashboard" /> : <Login enableGuestMode={enableGuestMode} />} />
-              <Route path="/signup" element={(user || guestMode) ? <Navigate to="/dashboard" /> : <Signup enableGuestMode={enableGuestMode}/>} />
+              <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+              <Route path="/signup" element={user ? <Navigate to="/dashboard" /> : <Signup />} />
               <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/login" />} />
               <Route path="/profile/:id" element={<Profile user={user} />} />
               <Route 
@@ -248,7 +231,6 @@ function App() {
                 element={
                   <Dashboard 
                     user={user} 
-                    guestMode={guestMode}
                     stocks={stocks}
                     cryptos={cryptos}
                     onDeleteStock={handleDeleteStock}
@@ -261,10 +243,8 @@ function App() {
                 element={
                   <AddStock 
                     user={user}
-                    guestMode={guestMode}
                     onAddStock={handleAddStock}
                     onAddCrypto={handleAddCrypto}
-                    enableGuestMode={enableGuestMode}
                   />
                 } 
               />
@@ -275,11 +255,10 @@ function App() {
                     stocks={stocks} 
                     cryptos={cryptos} 
                     user={user} 
-                    guestMode={guestMode}
                   />
                 } 
               />
-              <Route path="/ai-assistant" element={<AIAssistant user={user} guestMode={guestMode} />} />
+              <Route path="/ai-assistant" element={<AIAssistant user={user} />} />
               <Route 
                 path="/admin" 
                 element={
@@ -288,7 +267,7 @@ function App() {
                   <Navigate to="/dashboard" />
                 } 
               />
-              <Route path="/" element={<Navigate to={(user || guestMode) ? "/dashboard" : "/login"} />} />
+              <Route path="/" element={<Navigate to="/dashboard" />} />
             </Routes>
           )}
         </main>

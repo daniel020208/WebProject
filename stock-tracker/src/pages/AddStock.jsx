@@ -27,8 +27,8 @@ const defaultApiUsage = {
   }
 }
 
-function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode }) {
-  const isAuthenticated = !!user || guestMode;
+function AddStock({ onAddStock, onAddCrypto, user }) {
+  const isAuthenticated = !!user;
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState("")
   const [searchResults, setSearchResults] = useState([])
@@ -368,11 +368,11 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
   }
 
   const addToRecentSearches = (symbol) => {
-    setRecentSearches((prev) => {
-      const updated = [symbol, ...prev.filter((s) => s !== symbol)].slice(0, 5)
-      localStorage.setItem("recentSearches", JSON.stringify(updated))
-      return updated
-    })
+    if (!isAuthenticated) return;
+    
+    const updated = [symbol, ...recentSearches.filter(s => s !== symbol)].slice(0, 5)
+    setRecentSearches(updated)
+    localStorage.setItem("recentSearches", JSON.stringify(updated))
   }
 
   const handleAdd = async (item) => {
@@ -468,18 +468,18 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
   // render the page layout with form and search results using the high-contrast style
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 border-2 border-accent/20">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-black mb-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
               {selectedType === "stocks" ? "Add Stock" : "Add Cryptocurrency"}
             </h1>
-            {guestMode && (
+            {!isAuthenticated && (
               <p className="text-sm text-amber-600 dark:text-amber-400 mb-1">
-                Guest Mode - Changes won't be saved
+                Note: Log in to save your selections
               </p>
             )}
-            <p className="text-black text-sm">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
               {selectedType === "stocks" 
                 ? "Search for stocks by name or symbol" 
                 : "Search for cryptocurrencies by name or symbol"}
@@ -507,11 +507,11 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
 
         {!isAuthenticated ? (
           <div className="text-center p-8 bg-gray-50 dark:bg-gray-750 rounded-xl">
-            <h3 className="text-xl font-semibold mb-3 text-black">
-              Sign in to add stocks or cryptocurrencies
+            <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">
+              Sign in to save stocks or cryptocurrencies
             </h3>
-            <p className="text-black mb-6">
-              Create an account or log in to start building your portfolio.
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Create an account or log in to save your portfolio.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
@@ -524,16 +524,13 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
                 Log In
               </Button>
               <Button
-                onClick={() => {
-                  if (window.enableGuestMode) window.enableGuestMode();
-                  toast.success("Guest mode enabled. You can now add stocks without logging in.");
-                }}
+                onClick={() => navigate("/signup")}
                 variant="outline"
                 size="large"
                 fullWidth
                 animated
               >
-                Continue as Guest
+                Sign Up
               </Button>
             </div>
           </div>
@@ -614,13 +611,13 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
                 )}
 
                 <div className="mt-4 mb-2 flex justify-between items-center">
-                  <div className="text-sm text-black flex items-center">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
                     <button 
                       onClick={() => setShowApiStats(!showApiStats)} 
                       className={`flex items-center gap-1 hover:text-accent focus:outline-none ${isApiRateLimited ? 'text-error' : ''}`}
                       aria-label="Toggle API usage statistics"
                     >
-                      <FaChartBar className={isApiRateLimited ? "text-error" : "text-black"} />
+                      <FaChartBar className={isApiRateLimited ? "text-error" : "text-gray-600 dark:text-gray-400"} />
                       <span>API Usage</span>
                       <span className={`text-xs ml-1 ${isApiRateLimited ? 'text-error font-medium' : ''}`}>
                         {isApiRateLimited ? "RATE LIMITED" : `${apiUsage.alphaVantage.dailyRequests}/${apiUsage.alphaVantage.dailyLimit} calls`}
@@ -631,10 +628,10 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
                   {selectedType === "stocks" && (
                     <button 
                       onClick={() => setShowExchangeInfo(!showExchangeInfo)} 
-                      className="text-sm text-black flex items-center gap-1 hover:text-accent focus:outline-none"
+                      className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1 hover:text-accent focus:outline-none"
                       aria-label="Toggle exchange information"
                     >
-                      <FaInfoCircle className="text-black" />
+                      <FaInfoCircle className="text-gray-600 dark:text-gray-400" />
                       <span>Exchange Codes</span>
                     </button>
                   )}
@@ -654,8 +651,8 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
               </div>
 
               {recentSearches.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mb-6">
-                  <h2 className="text-lg font-semibold text-black mb-3">Recent Searches</h2>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Recent Searches</h2>
                   <div className="flex flex-wrap gap-2">
                     {recentSearches.map(symbol => (
                       <Button
@@ -676,8 +673,8 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
               )}
 
               {searchMode === "name" && searchResults.length > 0 && !selectedStock && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mb-6">
-                  <h2 className="text-lg font-semibold text-black mb-3">Search Results</h2>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Search Results</h2>
                   <div className="divide-y divide-gray-200 dark:divide-gray-700">
                     {searchResults.map((result) => (
                       <div 
@@ -686,10 +683,10 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
                         onClick={() => handleStockSelect(result)}
                       >
                         <div className="flex-1">
-                          <h3 className="font-medium text-black">{result.name}</h3>
+                          <h3 className="font-medium text-gray-900 dark:text-white">{result.name}</h3>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-black">{result.symbol}</span>
-                            <span className="text-xs px-2 py-1 bg-gray-200 text-black rounded-full">{result.exchange}</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{result.symbol}</span>
+                            <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300 rounded-full">{result.exchange}</span>
                           </div>
                         </div>
                         <FaPlus className="text-accent" />
@@ -700,14 +697,14 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
               )}
 
               {selectedStock && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h2 className="text-xl font-bold text-black">{selectedStock.name}</h2>
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedStock.name}</h2>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-black font-medium">{selectedStock.symbol}</span>
+                        <span className="text-gray-700 dark:text-gray-300 font-medium">{selectedStock.symbol}</span>
                         {selectedStock.exchange && (
-                          <span className="text-xs px-2 py-1 bg-gray-200 text-black rounded-full">
+                          <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300 rounded-full">
                             {selectedStock.exchange}
                           </span>
                         )}
@@ -724,38 +721,36 @@ function AddStock({ onAddStock, onAddCrypto, user, guestMode, enableGuestMode })
 
                   {stockDetails && selectedType === "stocks" && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                      <div className="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg">
-                        <div className="text-sm text-black">Price</div>
-                        <div className="font-semibold text-black">
-                          
-                            ${stockDetails.price ? stockDetails.price.toFixed(2) : "N/A"}
-                          
+                      <div className="bg-gray-800 dark:bg-gray-900 p-3 rounded-lg">
+                        <div className="text-sm text-gray-300 dark:text-gray-400">Price</div>
+                        <div className="font-semibold text-white">
+                          ${stockDetails.price ? stockDetails.price.toFixed(2) : "N/A"}
                         </div>
                       </div>
-                      <div className="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg">
-                        <div className="text-sm text-black">Market Cap</div>
-                        <div className="font-semibold text-black">
+                      <div className="bg-gray-800 dark:bg-gray-900 p-3 rounded-lg">
+                        <div className="text-sm text-gray-300 dark:text-gray-400">Market Cap</div>
+                        <div className="font-semibold text-white">
                           {stockDetails.marketCap ? formatMarketCap(stockDetails.marketCap) : "N/A"}
                         </div>
                       </div>
-                      <div className="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg">
-                        <div className="text-sm text-black">Industry</div>
-                        <div className="font-semibold text-black">
+                      <div className="bg-gray-800 dark:bg-gray-900 p-3 rounded-lg">
+                        <div className="text-sm text-gray-300 dark:text-gray-400">Industry</div>
+                        <div className="font-semibold text-white">
                           {stockDetails.industry || "N/A"}
                         </div>
                       </div>
                       {stockDetails.peRatio && (
-                        <div className="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg">
-                          <div className="text-sm text-black">P/E Ratio</div>
-                          <div className="font-semibold text-black">
+                        <div className="bg-gray-800 dark:bg-gray-900 p-3 rounded-lg">
+                          <div className="text-sm text-gray-300 dark:text-gray-400">P/E Ratio</div>
+                          <div className="font-semibold text-white">
                             {stockDetails.peRatio.toFixed(2)}
                           </div>
                         </div>
                       )}
                       {stockDetails.dividendYield && (
-                        <div className="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg">
-                          <div className="text-sm text-black">Dividend Yield</div>
-                          <div className="font-semibold text-black">
+                        <div className="bg-gray-800 dark:bg-gray-900 p-3 rounded-lg">
+                          <div className="text-sm text-gray-300 dark:text-gray-400">Dividend Yield</div>
+                          <div className="font-semibold text-white">
                             {(stockDetails.dividendYield * 100).toFixed(2)}%
                           </div>
                         </div>
