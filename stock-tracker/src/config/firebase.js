@@ -3,15 +3,16 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
+// Use environment variables for Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCBzLqdIAXLsaUZU9e5LhJRs3OAmAfKZUI",
-  authDomain: "stock-tracker-7a87a.firebaseapp.com",
-  databaseURL: "https://stock-tracker-7a87a-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "stock-tracker-7a87a",
-  storageBucket: "stock-tracker-7a87a.firebasestorage.app",
-  messagingSenderId: "436136550947",
-  appId: "1:436136550947:web:30e59d287e3d06291e4796",
-  measurementId: "G-W8B38MB3ZM"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);

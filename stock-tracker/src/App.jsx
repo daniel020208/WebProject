@@ -258,7 +258,7 @@ function App() {
                   />
                 } 
               />
-              <Route path="/ai-assistant" element={<AIAssistant user={user} />} />
+              <Route path="/ai-assistant" element={<AIAssistant user={user} stocks={stocks} cryptos={cryptos} />} />
               <Route 
                 path="/admin" 
                 element={

@@ -54,7 +54,7 @@ function Sidebar({ user }) {
     {
       path: "/ai-assistant",
       name: "AI Assistant",
-      icon: <FiUser size={20} />,
+      icon: <FiMessageSquare size={20} />,
     },
   ]
 

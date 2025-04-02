@@ -146,12 +146,12 @@ function AIAssistant({ user }) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-2rem)] max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-md overflow-hidden">
-      <div className="p-6 bg-gray-700 flex justify-between items-center">
+    <div className="flex flex-col h-[calc(100vh-6rem)] max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+      <div className="p-6 bg-gray-100 dark:bg-gray-700 flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white">AI Financial Assistant</h2>
-          <p className="text-gray-300 mt-2">
-            Ask me anything about stocks, market analysis, or financial advice. I'm here to help!
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI Financial Assistant</h2>
+          <p className="text-gray-500 dark:text-gray-300 mt-2">
+            Ask me anything about stocks, market analysis, or financial advice
           </p>
         </div>
         <div className="flex space-x-2">
@@ -160,17 +160,15 @@ function AIAssistant({ user }) {
               <Button 
                 onClick={() => saveConversation()} 
                 disabled={messages.length === 0}
-                className="p-2 bg-blue-500 hover:bg-blue-600 rounded-lg"
                 title="Save conversation"
               >
-                <FaSave size={18} />
+                <FaSave size={18} className="mr-2" /> Save
               </Button>
               <Button 
                 onClick={() => setShowHistory(!showHistory)} 
-                className="p-2 bg-blue-500 hover:bg-blue-600 rounded-lg"
                 title="View saved conversations"
               >
-                <FaHistory size={18} />
+                <FaHistory size={18} className="mr-2" /> History
               </Button>
             </>
           )}
@@ -178,17 +176,17 @@ function AIAssistant({ user }) {
       </div>
 
       {showHistory && savedConversations.length > 0 && (
-        <div className="bg-gray-900 p-4 border-b border-gray-700">
-          <h3 className="text-lg font-semibold text-white mb-2">Your Saved Conversations</h3>
+        <div className="bg-gray-50 dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Your Saved Conversations</h3>
           <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
             {savedConversations.map((convo) => (
               <Button 
                 key={convo.id}
                 onClick={() => loadConversation(convo)}
-                className="text-left p-2 bg-gray-800 hover:bg-gray-700 rounded"
+                className="text-left p-2 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
               >
-                <p className="text-sm text-white truncate">{convo.title}</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-sm text-gray-900 dark:text-white truncate">{convo.title}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {new Date(convo.timestamp.toDate()).toLocaleString()}
                 </p>
               </Button>
@@ -199,14 +197,14 @@ function AIAssistant({ user }) {
 
       {/* Preset questions */}
       {messages.length === 0 && (
-        <div className="bg-gray-900 p-4 border-b border-gray-700">
-          <h3 className="text-lg font-semibold text-white mb-2">Suggested Questions</h3>
+        <div className="bg-gray-50 dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Suggested Questions</h3>
           <div className="flex flex-wrap gap-2">
             {PRESET_QUESTIONS.map((question, index) => (
               <Button 
                 key={index}
                 onClick={() => handlePresetQuestion(question)}
-                className="text-sm p-2 bg-gray-800 hover:bg-gray-700 rounded"
+                className="text-sm p-2"
               >
                 {question}
               </Button>
@@ -215,9 +213,9 @@ function AIAssistant({ user }) {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white dark:bg-gray-800">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-400 mt-8">
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
             <p>No messages yet. Start by asking a question about stocks or financial markets!</p>
             <p className="mt-2 text-sm">Or try one of the suggested questions above.</p>
           </div>
@@ -231,7 +229,7 @@ function AIAssistant({ user }) {
                 className={`max-w-[80%] rounded-lg p-4 ${
                   message.role === "user"
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-700 text-white"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
                 }`}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
@@ -241,7 +239,7 @@ function AIAssistant({ user }) {
         )}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-lg p-4 bg-gray-700">
+            <div className="max-w-[80%] rounded-lg p-4 bg-gray-100 dark:bg-gray-700">
               <div className="flex space-x-2">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
@@ -252,7 +250,7 @@ function AIAssistant({ user }) {
         )}
         {error && (
           <div className="flex justify-center">
-            <div className="max-w-[80%] rounded-lg p-4 bg-red-600/20 text-red-200 text-sm">
+            <div className="max-w-[80%] rounded-lg p-4 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 text-sm">
               <p>Error: {error}</p>
               <p className="mt-1">Please try again or refresh the page if the problem persists.</p>
             </div>
@@ -261,7 +259,7 @@ function AIAssistant({ user }) {
         <div ref={chatEndRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 bg-gray-700">
+      <form onSubmit={handleSubmit} className="p-4 bg-gray-100 dark:bg-gray-700">
         <div className="flex space-x-4">
           <FormInput
             type="text"
@@ -276,11 +274,9 @@ function AIAssistant({ user }) {
           <Button
             type="submit"
             disabled={isLoading}
-            className={`px-6 py-2 ${
-              isLoading ? "bg-gray-500" : "bg-blue-500 hover:bg-blue-600"
-            } text-white rounded-lg flex items-center space-x-2 transition-colors`}
+            className={`px-6 py-2 flex items-center space-x-2`}
           >
-            <FaPaperPlane className={`${isLoading ? "opacity-50" : ""}`} />
+            <FaPaperPlane />
             <span>{isLoading ? "Sending..." : "Send"}</span>
           </Button>
         </div>
