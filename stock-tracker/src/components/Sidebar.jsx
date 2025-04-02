@@ -55,6 +55,7 @@ function Sidebar({ user }) {
       path: "/ai-assistant",
       name: "AI Assistant",
       icon: <FiMessageSquare size={20} />,
+      status: "construction",
     },
   ]
 
@@ -139,6 +140,11 @@ function Sidebar({ user }) {
                     <span className={`flex-shrink-0 ${isActive(item.path) ? "text-accent" : ""}`}>{item.icon}</span>
                     <span className={`ml-4 transition-all duration-200 whitespace-nowrap overflow-hidden ${isOpen ? "opacity-100 max-w-xs" : "opacity-0 max-w-0"}`}>
                       {item.name}
+                      {item.status === "construction" && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                          WIP
+                        </span>
+                      )}
                     </span>
                   </Link>
                 </li>

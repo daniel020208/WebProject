@@ -91,7 +91,7 @@ const FormInput = ({
               min-h-[100px] resize-y
             `}
             required={required}
-            {...rest}
+            {...(type !== 'textarea' ? rest : {})}
           />
         ) : (
           <input
